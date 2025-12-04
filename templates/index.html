@@ -9,6 +9,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>StegHider | Secure Image Steganography</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         :root {
@@ -254,13 +255,20 @@
 
         <!-- EMBED SECTION -->
         <div id="embed" class="content active">
-            <form action="/embed" method="post" enctype="multipart/form-data">
+            <form id="embed_form" onsubmit="handleEmbedSubmit(event)">
                 <div class="form-group">
-                    <label>Select Image</label>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <label style="margin:0;">Select Image(s)</label>
+                        <label style="font-size: 12px; cursor: pointer; display: flex; align-items: center;">
+                            <input type="checkbox" id="batch_mode_toggle" onchange="toggleBatchMode()" style="width: auto; margin-right: 5px;">
+                            Batch Mode (Bulk)
+                        </label>
+                    </div>
                     <div class="file-upload">
                         <label for="image_embed" class="file-upload-label" id="label_embed">
-                            <span>Click, Drag, or Take Photo</span>
+                            <span id="upload_text">Click, Drag, or Take Photo</span>
                             <img id="preview_embed" class="preview">
+                            <div id="batch_preview" style="display:none; margin-top:10px; font-size:12px; color:#aaa;"></div>
                         </label>
                         <input type="file" name="image" id="image_embed" accept="image/*" required onchange="handleFileSelect('image_embed', 'label_embed', 'preview_embed')">
                     </div>
@@ -313,8 +321,18 @@
                 </div>
 
                 <br>
-                <button type="submit">Hide & Download</button>
+                <button type="submit" id="embed_submit_btn">Hide Message</button>
             </form>
+            
+            <div id="embed_result_container" style="display:none; margin-top: 20px;">
+                <div class="result-box">
+                    <strong style="color: var(--accent-color);">Success!</strong>
+                    <p id="embed_result_msg">Your image is ready.</p>
+                    <div id="embed_actions" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <!-- Buttons injected here -->
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- EXTRACT SECTION -->
@@ -445,6 +463,18 @@
             <h3 style="margin-top: 0;">Scan QR Code</h3>
             <div id="reader" style="width: 100%;"></div>
             <button onclick="stopScanner()" style="margin-top: 20px; background-color: #ff4444;">Close</button>
+        </div>
+    </div>
+
+    <!-- Entropy Visualization Modal -->
+    <div id="entropy_modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; flex-direction: column;">
+        <div style="background: #1e1e1e; padding: 20px; border-radius: 12px; max-width: 90%; max-height: 90%; display: flex; flex-direction: column; align-items: center;">
+            <h3 style="margin-top: 0; color: var(--accent-color);">Entropy Heatmap</h3>
+            <p style="font-size: 12px; color: #aaa; margin-bottom: 10px;">Red pixels indicate modified data bits.</p>
+            <div style="position: relative; max-width: 100%; overflow: auto;">
+                <canvas id="entropy_canvas" style="max-width: 100%; border-radius: 8px; border: 1px solid #333;"></canvas>
+            </div>
+            <button onclick="document.getElementById('entropy_modal').style.display='none'" style="margin-top: 15px; width: auto; padding: 10px 30px;">Close</button>
         </div>
     </div>
 
@@ -700,6 +730,244 @@
             }
         });
         {% endif %}
+
+        // --- BATCH MODE & ENTROPY VIZ LOGIC ---
+
+        let isBatchMode = false;
+        let lastOriginalBlob = null;
+        let lastResultBlob = null;
+
+        function toggleBatchMode() {
+            isBatchMode = !isBatchMode;
+            const input = document.getElementById('image_embed');
+            const label = document.getElementById('label_embed');
+            const preview = document.getElementById('preview_embed');
+            const batchPreview = document.getElementById('batch_preview');
+            const uploadText = document.getElementById('upload_text');
+
+            if (isBatchMode) {
+                input.setAttribute('multiple', '');
+                uploadText.innerText = "Select Multiple Images (Batch)";
+                preview.style.display = 'none';
+                batchPreview.style.display = 'block';
+                batchPreview.innerText = "Batch Mode Active";
+            } else {
+                input.removeAttribute('multiple');
+                uploadText.innerText = "Click, Drag, or Take Photo";
+                batchPreview.style.display = 'none';
+                // Reset
+                input.value = '';
+                preview.style.display = 'none';
+            }
+        }
+
+        // Override handleFileSelect to support batch preview text
+        const originalHandleFileSelect = handleFileSelect;
+        handleFileSelect = function(inputId, labelId, previewId) {
+            if (inputId === 'image_embed' && isBatchMode) {
+                const input = document.getElementById(inputId);
+                const batchPreview = document.getElementById('batch_preview');
+                if (input.files.length > 0) {
+                    batchPreview.innerText = input.files.length + " files selected";
+                    document.getElementById(labelId).style.borderColor = "var(--accent-color)";
+                }
+            } else {
+                originalHandleFileSelect(inputId, labelId, previewId);
+            }
+        };
+
+        async function handleEmbedSubmit(event) {
+            event.preventDefault();
+            const form = document.getElementById('embed_form');
+            const formData = new FormData(form);
+            const submitBtn = document.getElementById('embed_submit_btn');
+            const resultContainer = document.getElementById('embed_result_container');
+            const resultMsg = document.getElementById('embed_result_msg');
+            const actions = document.getElementById('embed_actions');
+
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Processing...";
+            resultContainer.style.display = 'none';
+            actions.innerHTML = '';
+
+            try {
+                if (isBatchMode) {
+                    // BATCH MODE
+                    const files = document.getElementById('image_embed').files;
+                    if (files.length === 0) throw new Error("No files selected");
+
+                    const zip = new JSZip();
+                    let processedCount = 0;
+
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
+                        const singleFormData = new FormData(form);
+                        singleFormData.set('image', file); // Replace with single file
+
+                        submitBtn.innerText = `Processing ${i+1}/${files.length}...`;
+                        
+                        const response = await fetch('/embed', {
+                            method: 'POST',
+                            body: singleFormData
+                        });
+
+                        if (!response.ok) throw new Error(`Failed to process ${file.name}`);
+                        
+                        const blob = await response.blob();
+                        // Use original name + _hidden.png
+                        const newName = file.name.split('.')[0] + "_hidden.png";
+                        zip.file(newName, blob);
+                        processedCount++;
+                    }
+
+                    submitBtn.innerText = "Zipping...";
+                    const content = await zip.generateAsync({type:"blob"});
+                    
+                    // Trigger Download
+                    const url = URL.createObjectURL(content);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = "batch_stego_result.zip";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+
+                    resultMsg.innerText = `Successfully processed ${processedCount} images! Download started.`;
+                    resultContainer.style.display = 'block';
+
+                } else {
+                    // SINGLE MODE
+                    const fileInput = document.getElementById('image_embed');
+                    if (fileInput.files.length === 0) throw new Error("No file selected");
+                    
+                    // Store original for entropy viz
+                    lastOriginalBlob = fileInput.files[0];
+
+                    const response = await fetch('/embed', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        const text = await response.text();
+                        throw new Error(text || "Server error");
+                    }
+
+                    const blob = await response.blob();
+                    lastResultBlob = blob;
+
+                    // Trigger Download
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = "stego_image.png";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+
+                    // Show Result UI
+                    resultMsg.innerText = "Image processed successfully!";
+                    
+                    // Add Visualize Button
+                    const vizBtn = document.createElement('button');
+                    vizBtn.innerText = "🔥 Visualize Entropy";
+                    vizBtn.onclick = showEntropyViz;
+                    vizBtn.style.backgroundColor = "#ff4444";
+                    vizBtn.style.color = "white";
+                    actions.appendChild(vizBtn);
+                    
+                    // Add Re-download Button
+                    const dlBtn = document.createElement('button');
+                    dlBtn.innerText = "Download Again";
+                    dlBtn.onclick = () => {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = "stego_image.png";
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    };
+                    dlBtn.style.backgroundColor = "#333";
+                    actions.appendChild(dlBtn);
+
+                    resultContainer.style.display = 'block';
+                }
+            } catch (err) {
+                alert("Error: " + err.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Hide Message";
+            }
+        }
+
+        function showEntropyViz() {
+            if (!lastOriginalBlob || !lastResultBlob) return;
+            
+            const modal = document.getElementById('entropy_modal');
+            const canvas = document.getElementById('entropy_canvas');
+            const ctx = canvas.getContext('2d');
+            
+            modal.style.display = 'flex';
+            
+            // Load images
+            const imgOrig = new Image();
+            const imgNew = new Image();
+            
+            imgOrig.src = URL.createObjectURL(lastOriginalBlob);
+            imgNew.src = URL.createObjectURL(lastResultBlob);
+            
+            Promise.all([
+                new Promise(r => imgOrig.onload = r),
+                new Promise(r => imgNew.onload = r)
+            ]).then(() => {
+                // Set canvas size
+                canvas.width = imgOrig.width;
+                canvas.height = imgOrig.height;
+                
+                // Draw original to get data
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = imgOrig.width;
+                tempCanvas.height = imgOrig.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                
+                tempCtx.drawImage(imgOrig, 0, 0);
+                const dataOrig = tempCtx.getImageData(0, 0, imgOrig.width, imgOrig.height).data;
+                
+                tempCtx.clearRect(0, 0, imgOrig.width, imgOrig.height);
+                tempCtx.drawImage(imgNew, 0, 0);
+                const dataNew = tempCtx.getImageData(0, 0, imgOrig.width, imgOrig.height).data;
+                
+                // Create Heatmap
+                const heatmapData = ctx.createImageData(imgOrig.width, imgOrig.height);
+                const d = heatmapData.data;
+                
+                let diffCount = 0;
+                for (let i = 0; i < dataOrig.length; i += 4) {
+                    // Compare RGB (ignore Alpha for now)
+                    const diff = Math.abs(dataOrig[i] - dataNew[i]) + 
+                                 Math.abs(dataOrig[i+1] - dataNew[i+1]) + 
+                                 Math.abs(dataOrig[i+2] - dataNew[i+2]);
+                    
+                    if (diff > 0) {
+                        // HOT PIXEL (Red)
+                        d[i] = 255;   // R
+                        d[i+1] = 0;   // G
+                        d[i+2] = 0;   // B
+                        d[i+3] = 255; // A
+                        diffCount++;
+                    } else {
+                        // COLD PIXEL (Transparent Black)
+                        d[i] = 0;
+                        d[i+1] = 0;
+                        d[i+2] = 0;
+                        d[i+3] = 20; // Slight tint to show image bounds
+                    }
+                }
+                
+                ctx.putImageData(heatmapData, 0, 0);
+                console.log(`Entropy Viz: Found ${diffCount} modified pixels.`);
+            });
+        }
     </script>
 
 </body>
