@@ -85,6 +85,12 @@ def embed():
                 app.config["UPLOAD_FOLDER"], f"{unique_id}_pub.pem"
             )
             pub_key.save(pub_key_path)
+        elif "public_key_text" in request.form and request.form["public_key_text"].strip() != "":
+            pub_key_path = os.path.join(
+                app.config["UPLOAD_FOLDER"], f"{unique_id}_pub.pem"
+            )
+            with open(pub_key_path, "w") as f:
+                f.write(request.form["public_key_text"].strip())
         else:
             return "Encryption selected but no password or public key provided", 400
 
@@ -142,6 +148,12 @@ def extract():
                 app.config["UPLOAD_FOLDER"], f"{unique_id}_priv.pem"
             )
             priv_key.save(priv_key_path)
+        elif "private_key_text" in request.form and request.form["private_key_text"].strip() != "":
+            priv_key_path = os.path.join(
+                app.config["UPLOAD_FOLDER"], f"{unique_id}_priv.pem"
+            )
+            with open(priv_key_path, "w") as f:
+                f.write(request.form["private_key_text"].strip())
         else:
             return "Encryption selected but no password or private key provided", 400
 
@@ -258,7 +270,7 @@ def generate_qr():
     data = request.form.get("text", "")
     if not data:
         return "No text provided", 400
-    
+
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -269,12 +281,12 @@ def generate_qr():
     qr.make(fit=True)
 
     img = qr.make_image(fill_color="black", back_color="white")
-    
+
     img_io = io.BytesIO()
-    img.save(img_io, 'PNG')
+    img.save(img_io, "PNG")
     img_io.seek(0)
-    
-    return send_file(img_io, mimetype='image/png')
+
+    return send_file(img_io, mimetype="image/png")
 
 
 @app.route("/api/generate_keys", methods=["POST"])
@@ -282,22 +294,19 @@ def generate_keys_api():
     unique_id = str(uuid.uuid4())
     priv_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{unique_id}_private.pem")
     pub_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{unique_id}_public.pem")
-    
+
     generate_keys(priv_path, pub_path)
-    
+
     with open(priv_path, "rb") as f:
         priv_key = f.read().decode()
     with open(pub_path, "rb") as f:
         pub_key = f.read().decode()
-        
+
     # Cleanup
     os.remove(priv_path)
     os.remove(pub_path)
-    
-    return {
-        "private_key": priv_key,
-        "public_key": pub_key
-    }
+
+    return {"private_key": priv_key, "public_key": pub_key}
 
 
 if __name__ == "__main__":
