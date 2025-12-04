@@ -347,7 +347,7 @@
                 {% else %}
                     {% if extracted_text %}
                         <strong>Secret Message:</strong><br>
-                        <p style="white-space: pre-wrap;">{{ extracted_text }}</p>
+                        <p id="secret_message_text" style="white-space: pre-wrap; font-family: 'Courier New', monospace; color: var(--accent-color);">{{ extracted_text }}</p>
                     {% endif %}
                     
                     {% if download_link %}
@@ -474,6 +474,37 @@
 
         {% if extracted_text or download_link or error %}
             openTab('extract');
+        {% endif %}
+
+        // Matrix Decode Effect
+        {% if extracted_text %}
+        document.addEventListener("DOMContentLoaded", function() {
+            const element = document.getElementById("secret_message_text");
+            if(element) {
+                const originalText = element.innerText;
+                const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%^&*";
+                let iterations = 0;
+                
+                const interval = setInterval(() => {
+                    element.innerText = originalText
+                        .split("")
+                        .map((letter, index) => {
+                            if(index < iterations) {
+                                return originalText[index];
+                            }
+                            return chars[Math.floor(Math.random() * chars.length)];
+                        })
+                        .join("");
+                    
+                    if(iterations >= originalText.length) { 
+                        clearInterval(interval);
+                        element.innerText = originalText; // Ensure final state is clean
+                    }
+                    
+                    iterations += 1 / 2; // Speed of reveal
+                }, 30);
+            }
+        });
         {% endif %}
     </script>
 
