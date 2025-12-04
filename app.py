@@ -4,6 +4,7 @@ import uuid
 import zipfile
 import base64
 import io
+import qrcode
 from steg_hider import hide_message, extract_message, generate_keys
 
 app = Flask(__name__)
@@ -250,6 +251,53 @@ def generate_keys_route():
     os.remove(pub_path)
 
     return send_file(zip_path, as_attachment=True, download_name="steg_keys.zip")
+
+
+@app.route("/generate_qr", methods=["POST"])
+def generate_qr():
+    data = request.form.get("text", "")
+    if not data:
+        return "No text provided", 400
+    
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(data)
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    img_io = io.BytesIO()
+    img.save(img_io, 'PNG')
+    img_io.seek(0)
+    
+    return send_file(img_io, mimetype='image/png')
+
+
+@app.route("/api/generate_keys", methods=["POST"])
+def generate_keys_api():
+    unique_id = str(uuid.uuid4())
+    priv_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{unique_id}_private.pem")
+    pub_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{unique_id}_public.pem")
+    
+    generate_keys(priv_path, pub_path)
+    
+    with open(priv_path, "rb") as f:
+        priv_key = f.read().decode()
+    with open(pub_path, "rb") as f:
+        pub_key = f.read().decode()
+        
+    # Cleanup
+    os.remove(priv_path)
+    os.remove(pub_path)
+    
+    return {
+        "private_key": priv_key,
+        "public_key": pub_key
+    }
 
 
 if __name__ == "__main__":
