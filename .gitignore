@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Flask
+instance/
+.webassets-cache
+
+# Project specific
+uploads/
+*.pem
+*.zip
+*.png
+!static/images/*.png
+
+# Vercel
+.vercel/

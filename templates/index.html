@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#1e1e1e">
+    <link rel="apple-touch-icon" href="/static/images/icon-192.png">
+    <title>StegHider | Secure Image Steganography</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-color: #e0e0e0;
+            --accent-color: #00d4ff;
+            --accent-hover: #00a3cc;
+            --input-bg: #2c2c2c;
+            --border-color: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 500px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            margin: 20px;
+        }
+
+        .header {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+
+        .header span {
+            color: var(--accent-color);
+            font-weight: 600;
+        }
+
+        .tabs {
+            display: flex;
+            background-color: #181818;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.3s, color 0.3s;
+            font-weight: 500;
+            color: #888;
+        }
+
+        .tab:hover {
+            background-color: #252525;
+            color: #fff;
+        }
+
+        .tab.active {
+            background-color: var(--card-bg);
+            color: var(--accent-color);
+            border-top: 2px solid var(--accent-color);
+        }
+
+        .content {
+            padding: 30px;
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: white;
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        /* Custom File Input */
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-upload input[type="file"] {
+            display: none;
+        }
+
+        .file-upload-label {
+            display: block;
+            padding: 20px;
+            background-color: var(--input-bg);
+            border: 2px dashed var(--border-color);
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #aaa;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 80px;
+        }
+
+        .file-upload-label.dragover {
+            border-color: var(--accent-color);
+            background-color: #2a2a2a;
+            transform: scale(1.02);
+        }
+
+        .file-upload-label img.preview {
+            max-width: 100%;
+            max-height: 150px;
+            margin-top: 10px;
+            border-radius: 4px;
+            display: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #aaa;
+        }
+
+        .file-upload-label:hover {
+            border-color: var(--accent-color);
+            color: white;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--accent-color);
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: var(--accent-hover);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .toggle-advanced {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .advanced-options {
+            display: none;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .result-box {
+            background-color: #252525;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid var(--accent-color);
+            margin-top: 20px;
+            word-break: break-all;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 15px;
+            font-size: 12px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>Steg<span>Hider</span></h1>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="openTab('embed')">Hide</div>
+            <div class="tab" onclick="openTab('extract')">Reveal</div>
+        </div>
+
+        <!-- EMBED SECTION -->
+        <div id="embed" class="content active">
+            <form action="/embed" method="post" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Select Image</label>
+                    <div class="file-upload">
+                        <label for="image_embed" class="file-upload-label" id="label_embed">
+                            <span>Click, Drag, or Take Photo</span>
+                            <img id="preview_embed" class="preview">
+                        </label>
+                        <input type="file" name="image" id="image_embed" accept="image/*" required onchange="handleFileSelect('image_embed', 'label_embed', 'preview_embed')">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Secret Message (Text)</label>
+                    <textarea name="message" rows="4" placeholder="Enter text to hide..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>OR Secret File (Any type)</label>
+                    <div class="file-upload">
+                        <label for="secret_file" class="file-upload-label" id="label_secret_file">
+                            <span>Click or Drag File Here</span>
+                        </label>
+                        <input type="file" name="secret_file" id="secret_file" onchange="handleFileSelect('secret_file', 'label_secret_file', null)">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Encryption Password (Optional)</label>
+                    <input type="password" name="password" placeholder="Set a password to lock this message">
+                </div>
+
+                <div class="toggle-advanced" onclick="toggleAdvanced('embed_advanced')">Advanced Options (RSA Keys)</div>
+                
+                <div id="embed_advanced" class="advanced-options">
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="use_encryption" value="yes"> 
+                            Use RSA Key File instead of Password
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>Upload Public Key (.pem)</label>
+                        <input type="file" name="public_key" accept=".pem">
+                    </div>
+                </div>
+
+                <br>
+                <button type="submit">Hide & Download</button>
+            </form>
+        </div>
+
+        <!-- EXTRACT SECTION -->
+        <div id="extract" class="content">
+            <form action="/extract" method="post" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Select Image with Secret</label>
+                    <div class="file-upload">
+                        <label for="image_extract" class="file-upload-label" id="label_extract">
+                            <span>Click or Drag Image Here</span>
+                            <img id="preview_extract" class="preview">
+                        </label>
+                        <input type="file" name="image" id="image_extract" accept="image/*" required onchange="handleFileSelect('image_extract', 'label_extract', 'preview_extract')">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Decryption Password (If encrypted)</label>
+                    <input type="password" name="password" placeholder="Enter password to unlock">
+                </div>
+
+                <div class="toggle-advanced" onclick="toggleAdvanced('extract_advanced')">Advanced Options (RSA Keys)</div>
+
+                <div id="extract_advanced" class="advanced-options">
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="is_encrypted" value="yes"> 
+                            Use RSA Key File instead of Password
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>Upload Private Key (.pem)</label>
+                        <input type="file" name="private_key" accept=".pem">
+                    </div>
+                </div>
+
+                <br>
+                <button type="submit">Reveal Message</button>
+            </form>
+
+            {% if extracted_text or download_link or error %}
+            <div class="result-box">
+                {% if error %}
+                    <strong style="color: #ff4444;">Error:</strong> {{ error }}
+                {% else %}
+                    {% if extracted_text %}
+                        <strong>Secret Message:</strong><br>
+                        <p style="white-space: pre-wrap;">{{ extracted_text }}</p>
+                    {% endif %}
+                    
+                    {% if download_link %}
+                        {% if extracted_text %}<hr style="border-color: #444; margin: 15px 0;">{% endif %}
+                        <strong>Secret File:</strong><br>
+                        <a href="{{ download_link }}" class="download-btn" style="display: inline-block; margin-top: 10px; padding: 10px 20px; background-color: var(--accent-color); color: #000; text-decoration: none; border-radius: 4px; font-weight: bold;">Download File</a>
+                    {% endif %}
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="footer">
+            Secure & Private. No data is stored on the server.
+            <br>
+            <a href="#" onclick="document.getElementById('keys_form').submit(); return false;" style="color: #666; text-decoration: none; margin-top: 5px; display: inline-block;">Need RSA Keys? Generate Here</a>
+            <form id="keys_form" action="/generate_keys" method="post" style="display:none;"></form>
+            
+            <div style="margin-top: 20px; border-top: 1px solid #333; padding-top: 15px;">
+                Made with <span style="color: #ff4444;">&hearts;</span> for Privacy
+                <div style="margin-top: 8px; font-size: 11px; color: #444; word-break: break-all;">
+                    Donate (BTC): <span style="color: #888; user-select: all; cursor: pointer;" onclick="navigator.clipboard.writeText(this.innerText); alert('Address copied!')">bc1qf2j96j70j9I3cs3gh8048mgxpg3su5ydse6z9m</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openTab(tabName) {
+            var i;
+            var x = document.getElementsByClassName("content");
+            var tabs = document.getElementsByClassName("tab");
+            for (i = 0; i < x.length; i++) {
+                x[i].classList.remove("active");
+            }
+            for (i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove("active");
+            }
+            document.getElementById(tabName).classList.add("active");
+            
+            // Find the tab button that corresponds to this tabName
+            // Simple hack: index 0 is embed, index 1 is extract
+            if(tabName === 'embed') tabs[0].classList.add("active");
+            if(tabName === 'extract') tabs[1].classList.add("active");
+        }
+
+        function handleFileSelect(inputId, labelId, previewId) {
+            var input = document.getElementById(inputId);
+            var label = document.getElementById(labelId);
+            var preview = previewId ? document.getElementById(previewId) : null;
+            var span = label.querySelector('span');
+
+            if (input.files && input.files.length > 0) {
+                var file = input.files[0];
+                span.innerText = file.name;
+                label.style.borderColor = "var(--accent-color)";
+                label.style.color = "white";
+
+                if (preview && file.type.startsWith('image/')) {
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        preview.src = e.target.result;
+                        preview.style.display = 'block';
+                    }
+                    reader.readAsDataURL(file);
+                } else if (preview) {
+                    preview.style.display = 'none';
+                }
+            }
+        }
+
+        // Drag and Drop Logic
+        var dropZones = document.querySelectorAll('.file-upload-label');
+        dropZones.forEach(function(dropZone) {
+            var inputId = dropZone.getAttribute('for');
+            var input = document.getElementById(inputId);
+            var previewId = null;
+            
+            // Determine preview ID based on input ID
+            if (inputId === 'image_embed') previewId = 'preview_embed';
+            if (inputId === 'image_extract') previewId = 'preview_extract';
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, unhighlight, false);
+            });
+
+            function highlight(e) {
+                dropZone.classList.add('dragover');
+            }
+
+            function unhighlight(e) {
+                dropZone.classList.remove('dragover');
+            }
+
+            dropZone.addEventListener('drop', function(e) {
+                var dt = e.dataTransfer;
+                var files = dt.files;
+                input.files = files;
+                handleFileSelect(inputId, dropZone.id, previewId);
+            });
+        });
+
+        function toggleAdvanced(id) {
+            var el = document.getElementById(id);
+            if (el.style.display === "block") {
+                el.style.display = "none";
+            } else {
+                el.style.display = "block";
+            }
+        }
+
+        {% if extracted_text or download_link or error %}
+            openTab('extract');
+        {% endif %}
+    </script>
+
+</body>
+</html>
