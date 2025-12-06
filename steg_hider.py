@@ -831,7 +831,8 @@ def _run_args_and_exit():
         if getattr(args, "auto_tune", False):
             ok = auto_tune_and_embed(args.infile, covers, args.outdir, public_key_path=args.public_key, password=args.password,
                                      start_percent=args.rs_start, step_percent=args.rs_step, max_percent=args.rs_max,
-                                     verify_private_key=args.verify_private_key, verify_password=args.verify_password)
+                                     verify_private_key=args.verify_private_key, verify_password=args.verify_password,
+                                     expected_corrupt_fraction=args.expected_corruption, safety_factor=args.safety_factor)
         else:
             ok = chunk_and_embed_file(args.infile, covers, args.outdir, public_key_path=args.public_key, password=args.password, rs_nsym_override=rs_n, rs_percent_override=rs_p)
         sys.exit(0 if ok else 2)
@@ -932,7 +933,8 @@ def _simulate_resize_roundtrip(src_path, dst_path, scale_down=0.9):
 
 def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=None, password=None,
                         start_percent=5.0, step_percent=5.0, max_percent=35.0,
-                        verify_private_key=None, verify_password=None, max_iterations=None):
+                        verify_private_key=None, verify_password=None, max_iterations=None,
+                        expected_corrupt_fraction=0.02, safety_factor=1.5):
     """Auto-tune RS parity by embedding with increasing parity percent and verifying recovery under simulated corruption.
 
     Requires either `verify_private_key` (for RSA) or `verify_password` (for password mode) to validate reassembly.
@@ -946,6 +948,25 @@ def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=
             original_bytes = f.read()
 
         orig_sha = hashlib.sha256(original_bytes).hexdigest()
+
+        # Use estimator to seed starting percent based on approximate per-chunk size.
+        try:
+            total_size = len(original_bytes)
+            num_covers = max(1, len(cover_images))
+            # rough per-chunk payload (we'll add a small header estimate)
+            per_chunk_payload = math.ceil(total_size / num_covers)
+            header_estimate = 128
+            combined_len = per_chunk_payload + header_estimate
+            nsym_est, pct_frac = estimate_nsym_for_expected_corruption(combined_len, expected_corrupt_fraction=expected_corrupt_fraction, safety_factor=safety_factor)
+            pct_est = pct_frac * 100.0
+            # ensure starting percent is at least estimator suggestion
+            if start_percent is None:
+                start_percent = pct_est
+            else:
+                start_percent = max(float(start_percent), pct_est)
+            print(f"[*] Auto-tune seeded by estimator: per_chunk_len={combined_len}, suggested nsym={nsym_est}, pct={pct_est:.2f}%; start_percent set to {start_percent}%")
+        except Exception:
+            pass
 
         os.makedirs(out_dir, exist_ok=True)
 
