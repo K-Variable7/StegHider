@@ -12,8 +12,10 @@ import zlib
 import hashlib
 import math
 from reedsolo import RSCodec, ReedSolomonError
+import argparse
  
 DELIMITER = "###END###"
+DEFAULT_RS_PERCENT = 0.125  # default parity fraction (12.5%) of combined header+chunk
 def _safe_get_rgb(pixels, x, y):
     """Return a (r,g,b) tuple of ints from a PIL PixelAccess, defensively."""
     val = pixels[x, y]
@@ -742,6 +744,58 @@ def reassemble_from_images(image_paths, output_file_path, private_key_path=None,
     except Exception as e:
         print(f"[-] Error in reassemble_from_images: {e}")
         return False
+
+
+def _run_args_and_exit():
+    """Parse CLI args for non-interactive usage and execute commands if provided.
+    Returns True if args were handled (and process should exit), False otherwise.
+    """
+    parser = argparse.ArgumentParser(description="StegHider CLI (non-interactive)")
+    sub = parser.add_subparsers(dest="cmd")
+
+    # genkeys
+    p_gen = sub.add_parser("genkeys")
+    p_gen.add_argument("--private", default="private_key.pem")
+    p_gen.add_argument("--public", default="public_key.pem")
+
+    # chunk & embed
+    p_chunk = sub.add_parser("chunk")
+    p_chunk.add_argument("--infile", required=True)
+    p_chunk.add_argument("--covers", required=True, help="Comma-separated cover image paths")
+    p_chunk.add_argument("--outdir", required=True)
+    p_chunk.add_argument("--public-key", dest="public_key")
+    p_chunk.add_argument("--password")
+    p_chunk.add_argument("--rs-nsym", type=int)
+    p_chunk.add_argument("--rs-percent", type=float)
+
+    # reassemble
+    p_reas = sub.add_parser("reassemble")
+    p_reas.add_argument("--images", required=True, help="Comma-separated stego image paths")
+    p_reas.add_argument("--outfile", required=True)
+    p_reas.add_argument("--private-key", dest="private_key")
+    p_reas.add_argument("--password")
+
+    args = parser.parse_args()
+    if not args.cmd:
+        return False
+
+    if args.cmd == "genkeys":
+        generate_keys(private_path=args.private, public_path=args.public)
+        sys.exit(0)
+
+    if args.cmd == "chunk":
+        covers = [c.strip() for c in args.covers.split(",") if c.strip()]
+        rs_n = getattr(args, "rs_nsym", None)
+        rs_p = getattr(args, "rs_percent", None)
+        ok = chunk_and_embed_file(args.infile, covers, args.outdir, public_key_path=args.public_key, password=args.password, rs_nsym_override=rs_n, rs_percent_override=rs_p)
+        sys.exit(0 if ok else 2)
+
+    if args.cmd == "reassemble":
+        images = [c.strip() for c in args.images.split(",") if c.strip()]
+        ok = reassemble_from_images(images, args.outfile, private_key_path=args.private_key, password=args.password)
+        sys.exit(0 if ok else 2)
+
+    return True
 
 
 if __name__ == "__main__":
