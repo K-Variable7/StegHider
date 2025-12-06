@@ -2,16 +2,33 @@ from PIL import Image
 import sys
 import os
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey, RSAPrivateKey
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.fernet import Fernet
 import base64
 import json
 import zlib
-
+import hashlib
+import math
+from reedsolo import RSCodec, ReedSolomonError
+ 
 DELIMITER = "###END###"
-
-
+def _safe_get_rgb(pixels, x, y):
+    """Return a (r,g,b) tuple of ints from a PIL PixelAccess, defensively."""
+    val = pixels[x, y]
+    if val is None:
+        return (0, 0, 0)
+    # If PixelAccess returns a single int (grayscale) or floats, coerce
+    if isinstance(val, (int, float)):
+        v = int(val) & 0xFF
+        return (v, v, v)
+    # If it's a tuple/list-like, ensure ints
+    try:
+        r, g, b = val[:3]
+        return (int(r) & 0xFF, int(g) & 0xFF, int(b) & 0xFF)
+    except Exception:
+        return (0, 0, 0)
 def derive_key(password, salt):
     """Derives a Fernet-compatible key from a password."""
     kdf = PBKDF2HMAC(
@@ -92,6 +109,10 @@ def encrypt_message(data, public_key_path):
     with open(public_key_path, "rb") as f:
         public_key = serialization.load_pem_public_key(f.read())
 
+    # Ensure we have an RSA public key (helps static analyzers and provides clearer error messages)
+    if not isinstance(public_key, RSAPublicKey):
+        raise TypeError("Provided public key is not an RSA public key")
+
     encrypted_key = public_key.encrypt(
         fernet_key,
         padding.OAEP(
@@ -115,6 +136,9 @@ def decrypt_message(encrypted_data, private_key_path):
     # 2. Decrypt the Fernet key with RSA Private Key
     with open(private_key_path, "rb") as f:
         private_key = serialization.load_pem_private_key(f.read(), password=None)
+
+    if not isinstance(private_key, RSAPrivateKey):
+        raise TypeError("Provided private key is not an RSA private key")
 
     fernet_key = private_key.decrypt(
         encrypted_key,
@@ -175,7 +199,7 @@ def hide_message(
         compressed_data = zlib.compress(payload_bytes)
 
         if password:
-            print(f"[*] Encrypting message with password...")
+            print("[*] Encrypting message with password...")
             secret_data = encrypt_message_password(compressed_data, password)
             full_data = secret_data + DELIMITER.encode()
         elif public_key_path:
@@ -206,7 +230,7 @@ def hide_message(
 
         for y in range(height):
             for x in range(width):
-                r, g, b = pixels[x, y]
+                r, g, b = _safe_get_rgb(pixels, x, y)
 
                 if data_index < message_len:
                     r = (r & ~1) | int(binary_message[data_index])
@@ -218,7 +242,7 @@ def hide_message(
                     b = (b & ~1) | int(binary_message[data_index])
                     data_index += 1
 
-                pixels[x, y] = (r, g, b)
+                img.putpixel((x, y), (r, g, b))
                 if data_index >= message_len:
                     break
             if data_index >= message_len:
@@ -239,7 +263,6 @@ def extract_message(image_path, private_key_path=None, password=None):
         pixels = img.load()
 
         width, height = img.size
-        binary_data = ""
 
         print("[*] Extracting data...")
 
@@ -255,7 +278,7 @@ def extract_message(image_path, private_key_path=None, password=None):
 
         for y in range(height):
             for x in range(width):
-                r, g, b = pixels[x, y]
+                r, g, b = _safe_get_rgb(pixels, x, y)
 
                 collected_bits.append(str(r & 1))
                 if (
@@ -291,7 +314,7 @@ def extract_message(image_path, private_key_path=None, password=None):
             decrypted_data = None
 
             if password:
-                print(f"[*] Decrypting message with password...")
+                print("[*] Decrypting message with password...")
                 try:
                     decrypted_data = decrypt_message_password(content_bytes, password)
                 except Exception as e:
@@ -316,7 +339,7 @@ def extract_message(image_path, private_key_path=None, password=None):
                 # If decompression fails, maybe it wasn't compressed (old images)
                 try:
                     decrypted_json_str = decrypted_data.decode("utf-8")
-                except:
+                except Exception:
                     return {
                         "error": "Decompression failed and could not decode as text."
                     }
@@ -360,12 +383,375 @@ def calculate_capacity(image_path):
         return 0
 
 
+def embed_bytes_to_image(image_path, data_bytes, output_path):
+    """Embed raw bytes (already encrypted/compressed) into an image LSB and save to output_path."""
+    try:
+        img = Image.open(image_path)
+        img = img.convert("RGB")
+        pixels = img.load()
+
+        full_data = data_bytes + DELIMITER.encode()
+        binary_message = data_to_bin(full_data)
+        message_len = len(binary_message)
+
+        width, height = img.size
+        total_pixels = width * height * 3
+
+        if message_len > total_pixels:
+            raise ValueError(
+                f"Chunk too large for this image. Need {message_len} bits, but image only has {total_pixels} bits available."
+            )
+
+        data_index = 0
+        print(f"[*] Embedding {len(data_bytes)} bytes into {image_path}...")
+
+        for y in range(height):
+            for x in range(width):
+                r, g, b = _safe_get_rgb(pixels, x, y)
+
+                if data_index < message_len:
+                    r = (r & ~1) | int(binary_message[data_index])
+                    data_index += 1
+                if data_index < message_len:
+                    g = (g & ~1) | int(binary_message[data_index])
+                    data_index += 1
+                if data_index < message_len:
+                    b = (b & ~1) | int(binary_message[data_index])
+                    data_index += 1
+
+                img.putpixel((x, y), (r, g, b))
+                if data_index >= message_len:
+                    break
+            if data_index >= message_len:
+                break
+
+        img.save(output_path)
+        print(f"[+] Chunk embedded successfully to {output_path}")
+        return True
+
+    except Exception as e:
+        print(f"[-] Error embedding bytes: {e}")
+        return False
+
+
+def extract_raw_bytes_from_image(image_path):
+    """Extract raw bytes (header+payload) from image LSB without attempting decryption/decompression."""
+    try:
+        img = Image.open(image_path)
+        img = img.convert("RGB")
+        pixels = img.load()
+
+        width, height = img.size
+        delimiter_bin = data_to_bin(DELIMITER.encode())
+        delimiter_len = len(delimiter_bin)
+
+        collected_bits = []
+
+        for y in range(height):
+            for x in range(width):
+                r, g, b = _safe_get_rgb(pixels, x, y)
+
+                collected_bits.append(str(r & 1))
+                if (
+                    len(collected_bits) >= delimiter_len
+                    and "".join(collected_bits[-delimiter_len:]) == delimiter_bin
+                ):
+                    break
+
+                collected_bits.append(str(g & 1))
+                if (
+                    len(collected_bits) >= delimiter_len
+                    and "".join(collected_bits[-delimiter_len:]) == delimiter_bin
+                ):
+                    break
+
+                collected_bits.append(str(b & 1))
+                if (
+                    len(collected_bits) >= delimiter_len
+                    and "".join(collected_bits[-delimiter_len:]) == delimiter_bin
+                ):
+                    break
+            else:
+                continue
+            break
+
+        full_binary = "".join(collected_bits)
+        if full_binary.endswith(delimiter_bin):
+            content_binary = full_binary[:-delimiter_len]
+            content_bytes = bin_to_bytes(content_binary)
+            return content_bytes
+        else:
+            return None
+
+    except Exception as e:
+        print(f"[-] Error extracting raw bytes: {e}")
+        return None
+
+
+def chunk_and_embed_file(input_file_path, cover_images, out_dir, public_key_path=None, password=None, rs_nsym_override=None, rs_percent_override=None):
+    """Encrypt input file (hybrid or password), chunk the encrypted payload and embed across provided cover images.
+
+    cover_images: list of image paths (order matters). One chunk per image.
+    """
+    try:
+        if not os.path.exists(input_file_path):
+            print("[-] Input file not found.")
+            return False
+
+        with open(input_file_path, "rb") as f:
+            file_bytes = f.read()
+
+        print(f"[*] Read {len(file_bytes)} bytes from {input_file_path}")
+
+        # Encrypt the whole payload
+        if password:
+            print("[*] Encrypting payload with password...")
+            encrypted_payload = encrypt_message_password(file_bytes, password)
+        elif public_key_path:
+            print("[*] Encrypting payload with RSA public key...")
+            encrypted_payload = encrypt_message(file_bytes, public_key_path)
+        else:
+            print("[*] No encryption selected: using plaintext payload (not recommended)")
+            encrypted_payload = file_bytes
+
+        total_size = len(encrypted_payload)
+        print(f"[*] Encrypted payload size: {total_size} bytes")
+
+        # Prepare manifest
+        manifest = {
+            "version": 1,
+            "original_filename": os.path.basename(input_file_path),
+            "total_size": total_size,
+            "chunks": [],
+        }
+
+        # Determine chunk sizes based on cover images capacities
+        chunks = []
+        offset = 0
+        for idx, cover in enumerate(cover_images):
+            cap = calculate_capacity(cover)
+            # conservative margin for header + delimiter + compression/encryption overhead
+            cap_bytes = max(64, math.floor(cap * 0.85))
+
+            if offset >= total_size:
+                break
+
+            take = min(cap_bytes, total_size - offset)
+            chunk_bytes = encrypted_payload[offset : offset + take]
+
+            # simple header for the chunk
+            header = json.dumps({
+                "index": idx,
+                "payload_len": total_size,
+                "chunk_len": len(chunk_bytes),
+                "orig_name": os.path.basename(input_file_path),
+            }).encode("utf-8")
+
+            combined = header + b"\n\n" + chunk_bytes
+
+            # Determine Reed-Solomon parity length (nsym).
+            # Priority: explicit override (absolute nsym), percent override (e.g. 0.15 for 15%),
+            # otherwise use heuristic based on combined chunk length (~12.5%).
+            if rs_nsym_override is not None:
+                try:
+                    nsym = int(rs_nsym_override)
+                except Exception:
+                    nsym = None
+            elif rs_percent_override is not None:
+                try:
+                    percent = float(rs_percent_override)
+                    if percent > 1.0:
+                        # if user passed percent like 15, convert to fraction
+                        percent = percent / 100.0
+                    combined_len = len(combined)
+                    nsym = int(max(8, min(256, math.ceil(combined_len * percent))))
+                except Exception:
+                    nsym = None
+            else:
+                combined_len = len(combined)
+                suggested_nsym = int(max(12, min(192, math.ceil(combined_len * 0.125))))
+                nsym = suggested_nsym
+
+            # Try encoding with RS, reduce nsym until it fits
+            encoded_blob = None
+            while nsym >= 0:
+                try:
+                    if nsym > 0:
+                        rs = RSCodec(nsym)
+                        encoded = rs.encode(combined)
+                    else:
+                        encoded = combined
+
+                    # prefix nsym (2 bytes) so we can know parity length on decode
+                    final_blob = nsym.to_bytes(2, "big") + encoded
+
+                    if len(final_blob) <= cap_bytes:
+                        encoded_blob = final_blob
+                        break
+                    else:
+                        # reduce parity and retry
+                        if nsym == 0:
+                            break
+                        nsym = max(0, nsym // 2)
+                except Exception:
+                    nsym = max(0, nsym // 2)
+
+            if encoded_blob is None:
+                print(f"[-] Could not fit chunk into cover image {cover} (insufficient capacity)")
+                return False
+
+            sha = hashlib.sha256(encoded_blob).hexdigest()
+            chunks.append({"cover": cover, "data": encoded_blob, "sha256": sha, "nsym": nsym})
+            manifest["chunks"].append({"index": idx, "cover": os.path.basename(cover), "sha256": sha, "chunk_len": len(chunk_bytes), "nsym": nsym})
+
+            offset += take
+
+        total_chunks = len(chunks)
+        manifest["total_chunks"] = total_chunks
+
+        if offset < total_size:
+            print("[-] Not enough cover images to fit the payload. Provide more or larger images.")
+            return False
+
+        # Ensure output directory
+        os.makedirs(out_dir, exist_ok=True)
+
+        # Embed each chunk into corresponding cover image
+        out_images = []
+        for i, c in enumerate(chunks):
+            out_name = os.path.join(out_dir, f"stego_chunk_{i}_{os.path.basename(c['cover'])}")
+            # keep extension .png
+            if not out_name.lower().endswith('.png'):
+                out_name = out_name + '.png'
+
+            ok = embed_bytes_to_image(c["cover"], c["data"], out_name)
+            if not ok:
+                print(f"[-] Failed to embed chunk {i}")
+                return False
+            out_images.append(out_name)
+
+        # Save manifest (plaintext) into out_dir as manifest.json (will encrypt below if requested)
+        manifest_path = os.path.join(out_dir, "manifest.json")
+        with open(manifest_path, "w") as mf:
+            json.dump(manifest, mf, indent=2)
+
+        # Encrypt manifest if encryption was used for payload
+        manifest_bytes = json.dumps(manifest).encode("utf-8")
+        enc_manifest = None
+        if password:
+            enc_manifest = encrypt_message_password(manifest_bytes, password)
+        elif public_key_path:
+            enc_manifest = encrypt_message(manifest_bytes, public_key_path)
+
+        if enc_manifest:
+            manifest_enc_path = os.path.join(out_dir, "manifest.json.enc")
+            with open(manifest_enc_path, "wb") as mfe:
+                mfe.write(enc_manifest)
+            # remove plaintext manifest
+            try:
+                os.remove(manifest_path)
+            except Exception:
+                pass
+            print(f"[+] Finished embedding {total_chunks} chunks. Encrypted manifest saved to {manifest_enc_path}")
+        else:
+            print(f"[+] Finished embedding {total_chunks} chunks. Manifest saved to {manifest_path}")
+        return True
+
+    except Exception as e:
+        print(f"[-] Error in chunk_and_embed_file: {e}")
+        return False
+
+
+def reassemble_from_images(image_paths, output_file_path, private_key_path=None, password=None):
+    """Extract chunks from images (given in order or unsorted), reassemble, and decrypt to produce original file."""
+    try:
+        extracted_chunks = []
+        for p in image_paths:
+            data = extract_raw_bytes_from_image(p)
+            if data is None:
+                print(f"[-] No chunk found in {p}")
+                return False
+
+            # read nsym prefix (first 2 bytes)
+            if len(data) < 2:
+                print(f"[-] Chunk too small in {p}")
+                return False
+            nsym = int.from_bytes(data[:2], "big")
+            encoded = data[2:]
+
+            # Attempt RS decode if nsym > 0
+            try:
+                if nsym > 0:
+                    rs = RSCodec(nsym)
+                    decoded = rs.decode(encoded)
+                    # some reedsolo versions return (decoded, ecc); handle that
+                    if isinstance(decoded, tuple) and len(decoded) > 0:
+                        decoded = decoded[0]
+                else:
+                    decoded = encoded
+            except ReedSolomonError as e:
+                print(f"[-] Reed-Solomon decode failed for {p}: {e}")
+                return False
+            except Exception as e:
+                print(f"[-] Unexpected decode error for {p}: {e}")
+                return False
+
+            # normalize decoded value to raw bytes (handle tuple return types, arrays, memoryviews)
+            try:
+                if isinstance(decoded, tuple) and len(decoded) > 0:
+                    decoded = decoded[0]
+
+                decoded_bytes = bytes(decoded)
+            except Exception as e:
+                print(f"[-] Could not convert decoded data to bytes for {p}: {e}")
+                return False
+
+            # split header and chunk
+            try:
+                header_raw, chunk = decoded_bytes.split(b"\n\n", 1)
+            except ValueError:
+                print(f"[-] Invalid chunk format after decode in {p}")
+                return False
+
+            header = json.loads(header_raw.decode("utf-8"))
+            extracted_chunks.append((header.get("index", 0), chunk))
+
+        # sort by index
+        extracted_chunks.sort(key=lambda x: x[0])
+        payload_bytes = b"".join([c[1] for c in extracted_chunks])
+
+        # Now payload_bytes is the encrypted payload (possibly wrapped with RSA or password salt)
+        # Decrypt according to provided keys
+        decrypted = None
+        if password:
+            print("[*] Decrypting with password...")
+            decrypted = decrypt_message_password(payload_bytes, password)
+        elif private_key_path:
+            print("[*] Decrypting with RSA private key...")
+            decrypted = decrypt_message(payload_bytes, private_key_path)
+        else:
+            decrypted = payload_bytes
+
+        # Write to output file
+        with open(output_file_path, "wb") as out:
+            out.write(decrypted)
+
+        print(f"[+] Reassembled and wrote to {output_file_path}")
+        return True
+
+    except Exception as e:
+        print(f"[-] Error in reassemble_from_images: {e}")
+        return False
+
+
 if __name__ == "__main__":
     print("--- Steganography Image Hider (Secure) ---")
     print("1. Generate Keys")
     print("2. Embed Message")
     print("3. Extract Message")
     print("4. Check Image Capacity")
+    print("5. Chunk & Embed File across multiple cover images")
+    print("6. Reassemble & Extract file from stego images")
 
     choice = input("Select an option (1-4): ").strip()
 
@@ -420,6 +806,63 @@ if __name__ == "__main__":
             print("[-] Image not found.")
             sys.exit()
         calculate_capacity(img_path)
+
+    elif choice == "5":
+        infile = input("Path to input file to embed: ").strip()
+        covers_raw = input("Comma-separated list of cover image paths: ").strip()
+        covers = [c.strip() for c in covers_raw.split(',') if c.strip()]
+        out_dir = input("Output directory for stego images: ").strip() or "stego_out"
+        use_enc = input("Encrypt with RSA public key? (y/n): ").lower().strip()
+        pub_key = None
+        pwd = None
+        if use_enc == 'y':
+            pub_key = input("Path to public key (public_key.pem): ").strip() or "public_key.pem"
+        else:
+            use_pwd = input("Encrypt with password instead? (y/n): ").lower().strip()
+            if use_pwd == 'y':
+                pwd = input("Enter password: ").strip()
+
+        # RS parity override: either absolute nsym or percent (e.g. '15%')
+        rs_input = input("RS parity (absolute nsym or percent like '15%') or leave empty for heuristic: ").strip()
+        rs_override = None
+        rs_percent = None
+        if rs_input:
+            if rs_input.endswith('%'):
+                try:
+                    rs_percent = float(rs_input[:-1])
+                except Exception:
+                    rs_percent = None
+            else:
+                try:
+                    rs_override = int(rs_input)
+                except Exception:
+                    rs_override = None
+
+        ok = chunk_and_embed_file(infile, covers, out_dir, public_key_path=pub_key, password=pwd, rs_nsym_override=rs_override, rs_percent_override=rs_percent)
+        if ok:
+            print("[+] Chunk & embed completed.")
+        else:
+            print("[-] Chunk & embed failed.")
+
+    elif choice == "6":
+        images_raw = input("Comma-separated list of stego image paths (in order if possible): ").strip()
+        images = [c.strip() for c in images_raw.split(',') if c.strip()]
+        out_file = input("Path for output file (reassembled): ").strip() or "reassembled.bin"
+        use_enc = input("Was payload encrypted? (y/n): ").lower().strip()
+        priv_key = None
+        pwd = None
+        if use_enc == 'y':
+            which = input("Decrypt with RSA private key or password? (rsa/pwd): ").lower().strip()
+            if which == 'rsa':
+                priv_key = input("Path to private key (private_key.pem): ").strip() or "private_key.pem"
+            else:
+                pwd = input("Enter password: ").strip()
+
+        ok = reassemble_from_images(images, out_file, private_key_path=priv_key, password=pwd)
+        if ok:
+            print("[+] Reassembly successful.")
+        else:
+            print("[-] Reassembly failed.")
 
     else:
         print("[-] Invalid choice.")
