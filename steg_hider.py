@@ -16,6 +16,28 @@ import argparse
  
 DELIMITER = "###END###"
 DEFAULT_RS_PERCENT = 0.125  # default parity fraction (12.5%) of combined header+chunk
+
+
+def estimate_nsym_for_expected_corruption(combined_len, expected_corrupt_fraction=0.02, safety_factor=1.5, max_nsym=256):
+    """Estimate required RS nsym (parity bytes) given an expected fraction of corrupted bytes.
+
+    - combined_len: length in bytes of header+chunk
+    - expected_corrupt_fraction: fraction (0-1) of bytes expected to be corrupted
+    - safety_factor: multiply estimated corrupt bytes by this factor
+    - returns (nsym, percent) where percent is suggested RS percent of combined length
+    """
+    if combined_len <= 0:
+        return (16, DEFAULT_RS_PERCENT)
+    # estimated corrupted bytes
+    est_corrupt_bytes = combined_len * float(expected_corrupt_fraction)
+    # Reed-Solomon corrects up to nsym/2 random byte errors; for erasures it can correct nsym
+    # To be conservative assume random errors: nsym_needed ~= 2 * est_corrupt_bytes
+    nsym = int(math.ceil(2.0 * est_corrupt_bytes * float(safety_factor)))
+    nsym = max(8, min(int(max_nsym), nsym))
+    percent = nsym / float(combined_len) if combined_len > 0 else DEFAULT_RS_PERCENT
+    # clamp percent to reasonable bounds
+    percent = max(0.01, min(0.5, percent))
+    return (nsym, percent)
 def _safe_get_rgb(pixels, x, y):
     """Return a (r,g,b) tuple of ints from a PIL PixelAccess, defensively."""
     val = pixels[x, y]
@@ -767,6 +789,9 @@ def _run_args_and_exit():
     p_chunk.add_argument("--password")
     p_chunk.add_argument("--rs-nsym", type=int)
     p_chunk.add_argument("--rs-percent", type=float)
+    p_chunk.add_argument("--dry-run-estimate", action="store_true", help="Estimate nsym/percent for expected corruption and exit")
+    p_chunk.add_argument("--expected-corruption", type=float, default=0.02, help="Expected fraction of byte corruption (e.g., 0.02 for 2%) used by estimator")
+    p_chunk.add_argument("--safety-factor", type=float, default=1.5, help="Safety multiplier used by estimator")
     p_chunk.add_argument("--auto-tune", action="store_true", help="Automatically increase RS parity until simulated corruption recovery succeeds")
     p_chunk.add_argument("--rs-start", type=float, default=5.0, help="Starting RS percent for auto-tune (percent)")
     p_chunk.add_argument("--rs-step", type=float, default=5.0, help="RS percent increment step for auto-tune (percent)")
@@ -793,6 +818,16 @@ def _run_args_and_exit():
         covers = [c.strip() for c in args.covers.split(",") if c.strip()]
         rs_n = getattr(args, "rs_nsym", None)
         rs_p = getattr(args, "rs_percent", None)
+        if getattr(args, "dry_run_estimate", False):
+            # Do a dry-run estimate and exit -- need combined length estimate.
+            # Read input file and estimate per-chunk combined length as file size (single chunk)
+            with open(args.infile, 'rb') as rf:
+                payload = rf.read()
+            combined_len = len(payload)  # header overhead unknown here; use payload as proxy
+            nsym_suggest, pct_suggest = estimate_nsym_for_expected_corruption(combined_len, expected_corrupt_fraction=args.expected_corruption, safety_factor=args.safety_factor)
+            print(f"Estimated nsym: {nsym_suggest}, suggested RS percent: {pct_suggest*100:.2f}% for combined_len={combined_len}")
+            sys.exit(0)
+
         if getattr(args, "auto_tune", False):
             ok = auto_tune_and_embed(args.infile, covers, args.outdir, public_key_path=args.public_key, password=args.password,
                                      start_percent=args.rs_start, step_percent=args.rs_step, max_percent=args.rs_max,
