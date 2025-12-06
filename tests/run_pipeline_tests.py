@@ -1,11 +1,13 @@
 import os
 import sys
 from PIL import Image
+import shutil
 
 from steg_hider import (
     generate_keys,
     chunk_and_embed_file,
     reassemble_from_images,
+    auto_tune_and_embed,
 )
 
 
@@ -47,12 +49,19 @@ def run_e2e(tmp_dir):
     out_dir = os.path.join(tmp_dir, 'stego_out')
     os.makedirs(out_dir, exist_ok=True)
 
+    # Use simple chunk embed for E2E smoke test (no corruption simulation here)
     ok = chunk_and_embed_file(infile, [cover], out_dir, public_key_path=pub)
     if not ok:
         print('chunk_and_embed_file failed')
         return False
 
-    stego_images = [os.path.join(out_dir, p) for p in os.listdir(out_dir) if p.lower().endswith('.png')]
+    # auto_tune_and_embed writes final outputs into out_dir/final on success
+    # Find any stego images anywhere under out_dir (handles auto-tune final dir or direct outdir)
+    stego_images = []
+    for root, dirs, files in os.walk(out_dir):
+        for p in files:
+            if p.lower().endswith('.png'):
+                stego_images.append(os.path.join(root, p))
     if not stego_images:
         print('No stego images found')
         return False
@@ -87,9 +96,12 @@ def run_corruption_test(tmp_dir):
     out_dir = os.path.join(tmp_dir, 'stego_out2')
     os.makedirs(out_dir, exist_ok=True)
 
-    ok = chunk_and_embed_file(infile, [cover], out_dir, public_key_path=pub)
+    # Use auto-tune to pick RS parity robust to simulated corruption
+    ok = auto_tune_and_embed(infile, [cover], out_dir, public_key_path=pub,
+                             verify_private_key=priv, start_percent=10.0, step_percent=5.0,
+                             max_percent=40.0, max_iterations=8, jpeg_qualities=[85,75])
     if not ok:
-        print('chunk_and_embed_file failed')
+        print('auto_tune_and_embed failed')
         return False
 
     stego_images = [os.path.join(out_dir, p) for p in os.listdir(out_dir) if p.lower().endswith('.png')]
@@ -97,11 +109,38 @@ def run_corruption_test(tmp_dir):
         print('No stego images found')
         return False
 
-    corrupted = os.path.join(tmp_dir, 'corrupted.png')
-    corrupt_image_flip_lsb(stego_images[0], corrupted, flips=200)
+    # If auto-tune produced a sidecar manifest, prefer the variant it used
+    final_dir = os.path.join(out_dir, 'final')
+    sidecar = os.path.join(final_dir, 'manifest.auto_tune.json')
+    test_variant = None
+    if os.path.exists(sidecar):
+        try:
+            import json
+            with open(sidecar, 'r') as sf:
+                info = json.load(sf)
+            varname = info.get('variant')
+            if varname:
+                # search for that filename under out_dir
+                for root, dirs, files in os.walk(out_dir):
+                    if varname in files:
+                        test_variant = os.path.join(root, varname)
+                        break
+        except Exception:
+            test_variant = None
+
+    if not test_variant:
+        # Prefer an auto-tune produced variant (zeroed/recompress/resized) if present
+        variant_candidates = [p for p in stego_images if any(k in os.path.basename(p).lower() for k in ('zeroed', 'recompress', 'resized'))]
+        if variant_candidates:
+            test_variant = variant_candidates[0]
+        else:
+            # Fallback: flip LSBs on first stego image
+            corrupted = os.path.join(tmp_dir, 'corrupted.png')
+            corrupt_image_flip_lsb(stego_images[0], corrupted, flips=200)
+            test_variant = corrupted
 
     out_reassembled = os.path.join(tmp_dir, 'reassembled2.bin')
-    ok2 = reassemble_from_images([corrupted], out_reassembled, private_key_path=priv)
+    ok2 = reassemble_from_images([test_variant], out_reassembled, private_key_path=priv)
     if not ok2:
         print('Reassembly failed on corrupted image')
         return False

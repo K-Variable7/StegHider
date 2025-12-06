@@ -13,6 +13,9 @@ import hashlib
 import math
 from reedsolo import RSCodec, ReedSolomonError
 import argparse
+import logging
+import shutil
+import time
  
 DELIMITER = "###END###"
 DEFAULT_RS_PERCENT = 0.125  # default parity fraction (12.5%) of combined header+chunk
@@ -978,6 +981,17 @@ def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=
 
         os.makedirs(out_dir, exist_ok=True)
 
+        # Setup logger for auto-tune attempts
+        log_path = os.path.join(out_dir, 'auto_tune.log')
+        logger = logging.getLogger(f'auto_tune_{id(out_dir)}')
+        logger.setLevel(logging.INFO)
+        # Ensure no duplicate handlers
+        if not any(isinstance(h, logging.FileHandler) and h.baseFilename == os.path.abspath(log_path) for h in logger.handlers):
+            fh = logging.FileHandler(log_path)
+            fh.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+            logger.addHandler(fh)
+        logger.info(f"Starting auto-tune for {input_file_path} covers={len(cover_images)}")
+
         tried = []
         iter_count = 0
         pct = float(start_percent)
@@ -985,7 +999,8 @@ def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=
             iter_count += 1
             if max_iterations and iter_count > max_iterations:
                 break
-
+            attempt_start = math.floor(time.time())
+            logger.info(f"Attempt {iter_count}: trying RS percent {pct}%")
             print(f"[*] Auto-tune attempt: trying RS percent {pct}%")
             attempt_dir = os.path.join(out_dir, f"attempt_pct_{int(pct)}")
             try:
@@ -996,6 +1011,7 @@ def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=
 
             ok = chunk_and_embed_file(input_file_path, cover_images, attempt_dir, public_key_path=public_key_path, password=password, rs_percent_override=pct)
             if not ok:
+                logger.info(f"Attempt {iter_count} embed failed at pct={pct}%")
                 tried.append((pct, False, 'embed_failed'))
                 pct += float(step_percent)
                 continue
@@ -1027,7 +1043,8 @@ def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=
             resized = os.path.join(attempt_dir, 'resized.png')
             _simulate_resize_roundtrip(test_img, resized, scale_down=0.9)
 
-            variants = [zeroed] + jpeg_paths + [resized]
+            # include the raw LSB-flipped corrupted image first, then zeroed region, JPEGs and resized
+            variants = [corrupted, zeroed] + jpeg_paths + [resized]
             verified_any = False
             for variant in variants:
                 tmp_reassembled = os.path.join(attempt_dir, f'reassembled_check_{os.path.basename(variant)}.bin')
@@ -1041,6 +1058,7 @@ def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=
                     return False
 
                 if not verify_ok:
+                    logger.info(f"Attempt {iter_count} pct={pct}% variant={os.path.basename(variant)} verify_failed")
                     tried.append((pct, False, f'verify_failed:{os.path.basename(variant)}'))
                     continue
 
@@ -1053,13 +1071,38 @@ def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=
                     got_sha = None
 
                 if got_sha == orig_sha:
+                    logger.info(f"Attempt {iter_count} pct={pct}% variant={os.path.basename(variant)} success (sha match)")
                     print(f"[+] Auto-tune succeeded with RS percent {pct}% on variant {os.path.basename(variant)}")
                     # Move final attempt_dir contents into out_dir/final
                     final_dir = os.path.join(out_dir, 'final')
                     shutil.rmtree(final_dir, ignore_errors=True)
                     shutil.copytree(attempt_dir, final_dir)
 
-                    # annotate manifest if present
+                    # For compatibility with older tools/tests, also copy any stego PNGs into out_dir root
+                    try:
+                        for fname in os.listdir(final_dir):
+                            if fname.lower().endswith('.png'):
+                                srcf = os.path.join(final_dir, fname)
+                                dstf = os.path.join(out_dir, fname)
+                                try:
+                                    shutil.copy(srcf, dstf)
+                                except Exception:
+                                    pass
+                    except Exception:
+                        pass
+
+                    # copy auto_tune log into final_dir for debugging/record
+                    try:
+                        src_log = log_path
+                        if os.path.exists(src_log):
+                            shutil.copy(src_log, os.path.join(final_dir, 'auto_tune.log'))
+                            log_ref = 'auto_tune.log'
+                        else:
+                            log_ref = None
+                    except Exception:
+                        log_ref = None
+
+                    # annotate manifest if present (or write a sidecar if manifest is encrypted)
                     manifest_path = os.path.join(final_dir, 'manifest.json')
                     if not os.path.exists(manifest_path):
                         manifest_path = os.path.join(final_dir, 'manifest.json.enc') or manifest_path
@@ -1071,21 +1114,31 @@ def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=
                             mfj['auto_tune']['rs_percent'] = pct
                             mfj['auto_tune']['iterations'] = iter_count
                             mfj['auto_tune']['variant'] = os.path.basename(variant)
+                            if log_ref:
+                                mfj['auto_tune']['log'] = log_ref
                             with open(manifest_path, 'w') as mfw:
                                 json.dump(mfj, mfw, indent=2)
                         else:
                             # can't modify encrypted manifest; write a sidecar
                             sidecar = os.path.join(final_dir, 'manifest.auto_tune.json')
+                            sidecar_obj = {'rs_percent': pct, 'iterations': iter_count, 'variant': os.path.basename(variant)}
+                            if log_ref:
+                                sidecar_obj['auto_tune_log'] = log_ref
                             with open(sidecar, 'w') as sf:
-                                json.dump({'rs_percent': pct, 'iterations': iter_count, 'variant': os.path.basename(variant)}, sf, indent=2)
+                                json.dump(sidecar_obj, sf, indent=2)
                     except Exception:
                         pass
 
                     tried.append((pct, True, f'success:{os.path.basename(variant)}'))
+                    logger.info(f"Auto-tune completed: pct={pct}% variant={os.path.basename(variant)} iterations={iter_count}")
                     return True
                 else:
+                    logger.info(f"Attempt {iter_count} pct={pct}% variant={os.path.basename(variant)} sha_mismatch")
                     tried.append((pct, False, f'sha_mismatch:{os.path.basename(variant)}'))
 
+            attempt_end = math.floor(time.time())
+            duration = attempt_end - attempt_start
+            logger.info(f"Attempt {iter_count} finished pct={pct}% duration_sec={duration} tried_variants={[os.path.basename(v) for v in variants]}")
             pct += float(step_percent)
 
         print(f"[-] Auto-tune failed after trying: {tried}")

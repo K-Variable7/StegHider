@@ -1,6 +1,7 @@
 FROM python:3.11-slim
 
 WORKDIR /app
+ENV PYTHONPATH=/app
 
 # Install system deps needed to build reedsolo if required
 RUN apt-get update \
