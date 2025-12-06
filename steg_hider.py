@@ -798,6 +798,7 @@ def _run_args_and_exit():
     p_chunk.add_argument("--rs-max", type=float, default=35.0, help="Maximum RS percent for auto-tune (percent)")
     p_chunk.add_argument("--verify-private-key", dest="verify_private_key", help="Path to private key used to verify recovery during auto-tune")
     p_chunk.add_argument("--verify-password", dest="verify_password", help="Password used to verify recovery during auto-tune")
+    p_chunk.add_argument("--jpeg-qualities", dest="jpeg_qualities", help="Comma-separated JPEG qualities to try during auto-tune (e.g. 85,75,65)", default="85,75,65")
 
     # reassemble
     p_reas = sub.add_parser("reassemble")
@@ -829,10 +830,17 @@ def _run_args_and_exit():
             sys.exit(0)
 
         if getattr(args, "auto_tune", False):
+            # parse jpeg qualities
+            try:
+                jpeg_quals = [int(q) for q in args.jpeg_qualities.split(',') if q.strip()]
+            except Exception:
+                jpeg_quals = [85, 75, 65]
+
             ok = auto_tune_and_embed(args.infile, covers, args.outdir, public_key_path=args.public_key, password=args.password,
                                      start_percent=args.rs_start, step_percent=args.rs_step, max_percent=args.rs_max,
                                      verify_private_key=args.verify_private_key, verify_password=args.verify_password,
-                                     expected_corrupt_fraction=args.expected_corruption, safety_factor=args.safety_factor)
+                                     expected_corrupt_fraction=args.expected_corruption, safety_factor=args.safety_factor,
+                                     jpeg_qualities=jpeg_quals)
         else:
             ok = chunk_and_embed_file(args.infile, covers, args.outdir, public_key_path=args.public_key, password=args.password, rs_nsym_override=rs_n, rs_percent_override=rs_p)
         sys.exit(0 if ok else 2)
@@ -934,7 +942,7 @@ def _simulate_resize_roundtrip(src_path, dst_path, scale_down=0.9):
 def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=None, password=None,
                         start_percent=5.0, step_percent=5.0, max_percent=35.0,
                         verify_private_key=None, verify_password=None, max_iterations=None,
-                        expected_corrupt_fraction=0.02, safety_factor=1.5):
+                        expected_corrupt_fraction=0.02, safety_factor=1.5, jpeg_qualities=None):
     """Auto-tune RS parity by embedding with increasing parity percent and verifying recovery under simulated corruption.
 
     Requires either `verify_private_key` (for RSA) or `verify_password` (for password mode) to validate reassembly.
@@ -1006,15 +1014,20 @@ def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=
             zeroed = os.path.join(attempt_dir, 'zeroed.png')
             _zero_region_image(corrupted, zeroed, region_fraction=0.15)
 
-            # JPEG recompression variant
-            jpeg_path = os.path.join(attempt_dir, 'recompress.jpg')
-            _simulate_jpeg_recompress(test_img, jpeg_path, quality=80)
+            # JPEG recompression variants (try multiple qualities)
+            jpeg_paths = []
+            quals = jpeg_qualities or [85, 75, 65]
+            for q in quals:
+                qp = os.path.join(attempt_dir, f'recompress_q{q}.jpg')
+                okj = _simulate_jpeg_recompress(test_img, qp, quality=q)
+                if okj:
+                    jpeg_paths.append(qp)
 
             # Resize roundtrip variant
             resized = os.path.join(attempt_dir, 'resized.png')
             _simulate_resize_roundtrip(test_img, resized, scale_down=0.9)
 
-            variants = [zeroed, jpeg_path, resized]
+            variants = [zeroed] + jpeg_paths + [resized]
             verified_any = False
             for variant in variants:
                 tmp_reassembled = os.path.join(attempt_dir, f'reassembled_check_{os.path.basename(variant)}.bin')
