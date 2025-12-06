@@ -767,6 +767,12 @@ def _run_args_and_exit():
     p_chunk.add_argument("--password")
     p_chunk.add_argument("--rs-nsym", type=int)
     p_chunk.add_argument("--rs-percent", type=float)
+    p_chunk.add_argument("--auto-tune", action="store_true", help="Automatically increase RS parity until simulated corruption recovery succeeds")
+    p_chunk.add_argument("--rs-start", type=float, default=5.0, help="Starting RS percent for auto-tune (percent)")
+    p_chunk.add_argument("--rs-step", type=float, default=5.0, help="RS percent increment step for auto-tune (percent)")
+    p_chunk.add_argument("--rs-max", type=float, default=35.0, help="Maximum RS percent for auto-tune (percent)")
+    p_chunk.add_argument("--verify-private-key", dest="verify_private_key", help="Path to private key used to verify recovery during auto-tune")
+    p_chunk.add_argument("--verify-password", dest="verify_password", help="Password used to verify recovery during auto-tune")
 
     # reassemble
     p_reas = sub.add_parser("reassemble")
@@ -787,7 +793,12 @@ def _run_args_and_exit():
         covers = [c.strip() for c in args.covers.split(",") if c.strip()]
         rs_n = getattr(args, "rs_nsym", None)
         rs_p = getattr(args, "rs_percent", None)
-        ok = chunk_and_embed_file(args.infile, covers, args.outdir, public_key_path=args.public_key, password=args.password, rs_nsym_override=rs_n, rs_percent_override=rs_p)
+        if getattr(args, "auto_tune", False):
+            ok = auto_tune_and_embed(args.infile, covers, args.outdir, public_key_path=args.public_key, password=args.password,
+                                     start_percent=args.rs_start, step_percent=args.rs_step, max_percent=args.rs_max,
+                                     verify_private_key=args.verify_private_key, verify_password=args.verify_password)
+        else:
+            ok = chunk_and_embed_file(args.infile, covers, args.outdir, public_key_path=args.public_key, password=args.password, rs_nsym_override=rs_n, rs_percent_override=rs_p)
         sys.exit(0 if ok else 2)
 
     if args.cmd == "reassemble":
@@ -796,6 +807,166 @@ def _run_args_and_exit():
         sys.exit(0 if ok else 2)
 
     return True
+
+
+def _corrupt_lsb_image(src_path, dst_path, flips=200):
+    """Flip random LSBs in the red channel of the image to simulate mild corruption."""
+    try:
+        img = Image.open(src_path).convert('RGB')
+        pixels = img.load()
+        width, height = img.size
+        import random
+        for i in range(flips):
+            x = random.randrange(width)
+            y = random.randrange(height)
+            r, g, b = _safe_get_rgb(pixels, x, y)
+            r = (r & ~1) | (1 - (r & 1))
+            img.putpixel((x, y), (r, g, b))
+        img.save(dst_path)
+        return True
+    except Exception as e:
+        print(f"[-] Corruption (LSB) failed: {e}")
+        return False
+
+
+def _zero_region_image(src_path, dst_path, region_fraction=0.15):
+    """Zero out a random rectangular region to simulate cropping or erasure."""
+    try:
+        img = Image.open(src_path).convert('RGB')
+        pixels = img.load()
+        width, height = img.size
+        rw = max(1, int(width * region_fraction))
+        rh = max(1, int(height * region_fraction))
+        import random
+        x0 = random.randint(0, max(0, width - rw))
+        y0 = random.randint(0, max(0, height - rh))
+        for y in range(y0, min(height, y0 + rh)):
+            for x in range(x0, min(width, x0 + rw)):
+                img.putpixel((x, y), (0, 0, 0))
+        img.save(dst_path)
+        return True
+    except Exception as e:
+        print(f"[-] Corruption (zero region) failed: {e}")
+        return False
+
+
+def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=None, password=None,
+                        start_percent=5.0, step_percent=5.0, max_percent=35.0,
+                        verify_private_key=None, verify_password=None, max_iterations=None):
+    """Auto-tune RS parity by embedding with increasing parity percent and verifying recovery under simulated corruption.
+
+    Requires either `verify_private_key` (for RSA) or `verify_password` (for password mode) to validate reassembly.
+    """
+    try:
+        if not os.path.exists(input_file_path):
+            print("[-] Input file not found for auto-tune.")
+            return False
+
+        with open(input_file_path, 'rb') as f:
+            original_bytes = f.read()
+
+        orig_sha = hashlib.sha256(original_bytes).hexdigest()
+
+        os.makedirs(out_dir, exist_ok=True)
+
+        tried = []
+        iter_count = 0
+        pct = float(start_percent)
+        while pct <= float(max_percent):
+            iter_count += 1
+            if max_iterations and iter_count > max_iterations:
+                break
+
+            print(f"[*] Auto-tune attempt: trying RS percent {pct}%")
+            attempt_dir = os.path.join(out_dir, f"attempt_pct_{int(pct)}")
+            try:
+                shutil.rmtree(attempt_dir, ignore_errors=True)
+                os.makedirs(attempt_dir, exist_ok=True)
+            except Exception:
+                pass
+
+            ok = chunk_and_embed_file(input_file_path, cover_images, attempt_dir, public_key_path=public_key_path, password=password, rs_percent_override=pct)
+            if not ok:
+                tried.append((pct, False, 'embed_failed'))
+                pct += float(step_percent)
+                continue
+
+            # find stego images
+            stego_images = [os.path.join(attempt_dir, p) for p in os.listdir(attempt_dir) if p.lower().endswith('.png')]
+            if not stego_images:
+                tried.append((pct, False, 'no_stego_images'))
+                pct += float(step_percent)
+                continue
+
+            # simulate corruption on first stego image and attempt recovery
+            test_img = stego_images[0]
+            corrupted = os.path.join(attempt_dir, 'corrupted.png')
+            _corrupt_lsb_image(test_img, corrupted, flips=300)
+            zeroed = os.path.join(attempt_dir, 'zeroed.png')
+            _zero_region_image(corrupted, zeroed, region_fraction=0.15)
+
+            tmp_reassembled = os.path.join(attempt_dir, 'reassembled_check.bin')
+            verify_ok = False
+            # Attempt verification using provided verification credentials
+            if verify_password:
+                verify_ok = reassemble_from_images([zeroed], tmp_reassembled, password=verify_password)
+            elif verify_private_key:
+                verify_ok = reassemble_from_images([zeroed], tmp_reassembled, private_key_path=verify_private_key)
+            else:
+                print("[-] No verification credential provided (private key or password). Auto-tune requires verification credentials.")
+                return False
+
+            if verify_ok:
+                # check SHA
+                try:
+                    with open(tmp_reassembled, 'rb') as rf:
+                        got = rf.read()
+                    got_sha = hashlib.sha256(got).hexdigest()
+                except Exception:
+                    got_sha = None
+
+                if got_sha == orig_sha:
+                    print(f"[+] Auto-tune succeeded with RS percent {pct}%")
+                    # Move final attempt_dir contents into out_dir/final
+                    final_dir = os.path.join(out_dir, 'final')
+                    shutil.rmtree(final_dir, ignore_errors=True)
+                    shutil.copytree(attempt_dir, final_dir)
+
+                    # annotate manifest if present
+                    manifest_path = os.path.join(final_dir, 'manifest.json')
+                    if not os.path.exists(manifest_path):
+                        manifest_path = os.path.join(final_dir, 'manifest.json.enc') or manifest_path
+                    try:
+                        if os.path.exists(manifest_path) and manifest_path.endswith('.json'):
+                            with open(manifest_path, 'r') as mf:
+                                mfj = json.load(mf)
+                            mfj.setdefault('auto_tune', {})
+                            mfj['auto_tune']['rs_percent'] = pct
+                            mfj['auto_tune']['iterations'] = iter_count
+                            with open(manifest_path, 'w') as mfw:
+                                json.dump(mfj, mfw, indent=2)
+                        else:
+                            # can't modify encrypted manifest; write a sidecar
+                            sidecar = os.path.join(final_dir, 'manifest.auto_tune.json')
+                            with open(sidecar, 'w') as sf:
+                                json.dump({'rs_percent': pct, 'iterations': iter_count}, sf, indent=2)
+                    except Exception:
+                        pass
+
+                    tried.append((pct, True, 'success'))
+                    return True
+                else:
+                    tried.append((pct, False, 'sha_mismatch'))
+            else:
+                tried.append((pct, False, 'verify_failed'))
+
+            pct += float(step_percent)
+
+        print(f"[-] Auto-tune failed after trying: {tried}")
+        return False
+    except Exception as e:
+        print(f"[-] Error in auto_tune_and_embed: {e}")
+        return False
 
 
 if __name__ == "__main__":
