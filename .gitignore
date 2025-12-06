@@ -17,6 +17,10 @@ uploads/
 *.png
 !static/images/*.png
 
+# Environment files
+.env
+.env.*
+
 # Vercel
 .vercel/
 FUTURE_NFT.md
