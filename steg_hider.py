@@ -850,6 +850,51 @@ def _zero_region_image(src_path, dst_path, region_fraction=0.15):
         return False
 
 
+def _simulate_jpeg_recompress(src_path, dst_path, quality=80):
+    """Recompress the image as JPEG at `quality` to simulate platform recompression.
+
+    Saves output to `dst_path` (can be .jpg or .png). Returns True on success.
+    """
+    try:
+        img = Image.open(src_path).convert('RGB')
+        # Write to a temporary JPEG then reopen and save to dst_path if requested
+        tmp_jpeg = dst_path
+        # If dst_path endswith .png, we still create a jpeg and then save png
+        if dst_path.lower().endswith('.png'):
+            tmp_jpeg = dst_path[:-4] + '.jpg'
+
+        img.save(tmp_jpeg, format='JPEG', quality=int(quality))
+
+        if dst_path.lower().endswith('.png'):
+            # reopen jpeg and save as png to preserve extension
+            img2 = Image.open(tmp_jpeg).convert('RGB')
+            img2.save(dst_path, format='PNG')
+            try:
+                os.remove(tmp_jpeg)
+            except Exception:
+                pass
+        return True
+    except Exception as e:
+        print(f"[-] JPEG recompress failed: {e}")
+        return False
+
+
+def _simulate_resize_roundtrip(src_path, dst_path, scale_down=0.9):
+    """Resize down by `scale_down` then resize back to original size to simulate scaling artifacts."""
+    try:
+        img = Image.open(src_path).convert('RGB')
+        width, height = img.size
+        new_w = max(1, int(width * float(scale_down)))
+        new_h = max(1, int(height * float(scale_down)))
+        img_small = img.resize((new_w, new_h), resample=Image.LANCZOS)
+        img_round = img_small.resize((width, height), resample=Image.BILINEAR)
+        img_round.save(dst_path)
+        return True
+    except Exception as e:
+        print(f"[-] Resize roundtrip failed: {e}")
+        return False
+
+
 def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=None, password=None,
                         start_percent=5.0, step_percent=5.0, max_percent=35.0,
                         verify_private_key=None, verify_password=None, max_iterations=None):
@@ -898,25 +943,38 @@ def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=
                 pct += float(step_percent)
                 continue
 
-            # simulate corruption on first stego image and attempt recovery
+            # simulate corruption variations on first stego image and attempt recovery
             test_img = stego_images[0]
             corrupted = os.path.join(attempt_dir, 'corrupted.png')
             _corrupt_lsb_image(test_img, corrupted, flips=300)
             zeroed = os.path.join(attempt_dir, 'zeroed.png')
             _zero_region_image(corrupted, zeroed, region_fraction=0.15)
 
-            tmp_reassembled = os.path.join(attempt_dir, 'reassembled_check.bin')
-            verify_ok = False
-            # Attempt verification using provided verification credentials
-            if verify_password:
-                verify_ok = reassemble_from_images([zeroed], tmp_reassembled, password=verify_password)
-            elif verify_private_key:
-                verify_ok = reassemble_from_images([zeroed], tmp_reassembled, private_key_path=verify_private_key)
-            else:
-                print("[-] No verification credential provided (private key or password). Auto-tune requires verification credentials.")
-                return False
+            # JPEG recompression variant
+            jpeg_path = os.path.join(attempt_dir, 'recompress.jpg')
+            _simulate_jpeg_recompress(test_img, jpeg_path, quality=80)
 
-            if verify_ok:
+            # Resize roundtrip variant
+            resized = os.path.join(attempt_dir, 'resized.png')
+            _simulate_resize_roundtrip(test_img, resized, scale_down=0.9)
+
+            variants = [zeroed, jpeg_path, resized]
+            verified_any = False
+            for variant in variants:
+                tmp_reassembled = os.path.join(attempt_dir, f'reassembled_check_{os.path.basename(variant)}.bin')
+                verify_ok = False
+                if verify_password:
+                    verify_ok = reassemble_from_images([variant], tmp_reassembled, password=verify_password)
+                elif verify_private_key:
+                    verify_ok = reassemble_from_images([variant], tmp_reassembled, private_key_path=verify_private_key)
+                else:
+                    print("[-] No verification credential provided (private key or password). Auto-tune requires verification credentials.")
+                    return False
+
+                if not verify_ok:
+                    tried.append((pct, False, f'verify_failed:{os.path.basename(variant)}'))
+                    continue
+
                 # check SHA
                 try:
                     with open(tmp_reassembled, 'rb') as rf:
@@ -926,7 +984,7 @@ def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=
                     got_sha = None
 
                 if got_sha == orig_sha:
-                    print(f"[+] Auto-tune succeeded with RS percent {pct}%")
+                    print(f"[+] Auto-tune succeeded with RS percent {pct}% on variant {os.path.basename(variant)}")
                     # Move final attempt_dir contents into out_dir/final
                     final_dir = os.path.join(out_dir, 'final')
                     shutil.rmtree(final_dir, ignore_errors=True)
@@ -943,22 +1001,21 @@ def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=
                             mfj.setdefault('auto_tune', {})
                             mfj['auto_tune']['rs_percent'] = pct
                             mfj['auto_tune']['iterations'] = iter_count
+                            mfj['auto_tune']['variant'] = os.path.basename(variant)
                             with open(manifest_path, 'w') as mfw:
                                 json.dump(mfj, mfw, indent=2)
                         else:
                             # can't modify encrypted manifest; write a sidecar
                             sidecar = os.path.join(final_dir, 'manifest.auto_tune.json')
                             with open(sidecar, 'w') as sf:
-                                json.dump({'rs_percent': pct, 'iterations': iter_count}, sf, indent=2)
+                                json.dump({'rs_percent': pct, 'iterations': iter_count, 'variant': os.path.basename(variant)}, sf, indent=2)
                     except Exception:
                         pass
 
-                    tried.append((pct, True, 'success'))
+                    tried.append((pct, True, f'success:{os.path.basename(variant)}'))
                     return True
                 else:
-                    tried.append((pct, False, 'sha_mismatch'))
-            else:
-                tried.append((pct, False, 'verify_failed'))
+                    tried.append((pct, False, f'sha_mismatch:{os.path.basename(variant)}'))
 
             pct += float(step_percent)
 
