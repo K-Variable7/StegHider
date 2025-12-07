@@ -247,6 +247,7 @@
             <div class="tab active" onclick="openTab('embed')">Hide</div>
             <div class="tab" onclick="openTab('extract')">Reveal</div>
             <div class="tab" onclick="openTab('metawipe')">Clean Metadata</div>
+            <div class="tab" onclick="openTab('profile')">Profile</div>
         </div>
 
         <!-- EMBED SECTION -->
@@ -423,6 +424,24 @@
             </div>
         </div>
 
+        <!-- PROFILE SECTION -->
+        <div id="profile" class="content">
+            <h3 style="margin-bottom: 20px; color: var(--accent-color);">User Profile</h3>
+            <div class="form-group">
+                <label>License Key</label>
+                <input type="password" id="profile_license_key" placeholder="Enter your premium license key">
+                <small style="color: #666; font-size: 12px;">Enter 'premium123' for demo. In production, this would be your purchased key.</small>
+            </div>
+            <div class="form-group">
+                <label>Email (Optional)</label>
+                <input type="email" id="profile_email" placeholder="your@email.com">
+                <small style="color: #666; font-size: 12px;">Minimal data collection for account recovery.</small>
+            </div>
+            <button type="button" onclick="saveProfile()">Save Profile</button>
+            <button type="button" onclick="clearProfile()" style="margin-left: 10px; background-color: #444;">Clear Profile</button>
+            <div id="profile_status" style="margin-top: 15px; font-size: 14px;"></div>
+        </div>
+
         <div class="footer">
             Secure & Private. No data is stored on the server.
             <br>
@@ -535,6 +554,68 @@
                 el.style.display = "block";
             }
         }
+
+        // Profile management
+        function saveProfile() {
+            var licenseKey = document.getElementById('profile_license_key').value;
+            var email = document.getElementById('profile_email').value;
+            var profile = {
+                license_key: licenseKey,
+                email: email,
+                saved_at: new Date().toISOString()
+            };
+            localStorage.setItem('steghider_profile', JSON.stringify(profile));
+            document.getElementById('profile_status').innerHTML = '<span style="color: #00d4ff;">Profile saved successfully!</span>';
+            // Auto-populate license key in embed form
+            document.getElementsByName('license_key')[0].value = licenseKey;
+            setTimeout(() => document.getElementById('profile_status').innerHTML = '', 3000);
+        }
+
+        function clearProfile() {
+            localStorage.removeItem('steghider_profile');
+            document.getElementById('profile_license_key').value = '';
+            document.getElementById('profile_email').value = '';
+            document.getElementById('profile_status').innerHTML = '<span style="color: #ff4444;">Profile cleared.</span>';
+            // Clear license key in embed form
+            document.getElementsByName('license_key')[0].value = '';
+            setTimeout(() => document.getElementById('profile_status').innerHTML = '', 3000);
+        }
+
+        function loadProfile() {
+            var profile = localStorage.getItem('steghider_profile');
+            if (profile) {
+                profile = JSON.parse(profile);
+                document.getElementById('profile_license_key').value = profile.license_key || '';
+                document.getElementById('profile_email').value = profile.email || '';
+                // Auto-populate license key in embed form
+                document.getElementsByName('license_key')[0].value = profile.license_key || '';
+            }
+        }
+
+        // Update tab switching for profile tab
+        function openTab(tabName) {
+            var i;
+            var x = document.getElementsByClassName("content");
+            var tabs = document.getElementsByClassName("tab");
+            for (i = 0; i < x.length; i++) {
+                x[i].classList.remove("active");
+            }
+            for (i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove("active");
+            }
+            document.getElementById(tabName).classList.add("active");
+            
+            // Find the tab button that corresponds to this tabName
+            if(tabName === 'embed') tabs[0].classList.add("active");
+            if(tabName === 'extract') tabs[1].classList.add("active");
+            if(tabName === 'metawipe') tabs[2].classList.add("active");
+            if(tabName === 'profile') tabs[3].classList.add("active");
+        }
+
+        // Load profile on page load
+        window.onload = function() {
+            loadProfile();
+        };
 
         {% if extracted_text or download_link or error %}
             openTab('extract');
