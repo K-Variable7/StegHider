@@ -16,12 +16,14 @@ import argparse
 import logging
 import shutil
 import time
- 
+
 DELIMITER = "###END###"
 DEFAULT_RS_PERCENT = 0.125  # default parity fraction (12.5%) of combined header+chunk
 
 
-def estimate_nsym_for_expected_corruption(combined_len, expected_corrupt_fraction=0.02, safety_factor=1.5, max_nsym=256):
+def estimate_nsym_for_expected_corruption(
+    combined_len, expected_corrupt_fraction=0.02, safety_factor=1.5, max_nsym=256
+):
     """Estimate required RS nsym (parity bytes) given an expected fraction of corrupted bytes.
 
     - combined_len: length in bytes of header+chunk
@@ -41,6 +43,8 @@ def estimate_nsym_for_expected_corruption(combined_len, expected_corrupt_fractio
     # clamp percent to reasonable bounds
     percent = max(0.01, min(0.5, percent))
     return (nsym, percent)
+
+
 def _safe_get_rgb(pixels, x, y):
     """Return a (r,g,b) tuple of ints from a PIL PixelAccess, defensively."""
     val = pixels[x, y]
@@ -56,6 +60,8 @@ def _safe_get_rgb(pixels, x, y):
         return (int(r) & 0xFF, int(g) & 0xFF, int(b) & 0xFF)
     except Exception:
         return (0, 0, 0)
+
+
 def derive_key(password, salt):
     """Derives a Fernet-compatible key from a password."""
     kdf = PBKDF2HMAC(
@@ -515,7 +521,15 @@ def extract_raw_bytes_from_image(image_path):
         return None
 
 
-def chunk_and_embed_file(input_file_path, cover_images, out_dir, public_key_path=None, password=None, rs_nsym_override=None, rs_percent_override=None):
+def chunk_and_embed_file(
+    input_file_path,
+    cover_images,
+    out_dir,
+    public_key_path=None,
+    password=None,
+    rs_nsym_override=None,
+    rs_percent_override=None,
+):
     """Encrypt input file (hybrid or password), chunk the encrypted payload and embed across provided cover images.
 
     cover_images: list of image paths (order matters). One chunk per image.
@@ -538,7 +552,9 @@ def chunk_and_embed_file(input_file_path, cover_images, out_dir, public_key_path
             print("[*] Encrypting payload with RSA public key...")
             encrypted_payload = encrypt_message(file_bytes, public_key_path)
         else:
-            print("[*] No encryption selected: using plaintext payload (not recommended)")
+            print(
+                "[*] No encryption selected: using plaintext payload (not recommended)"
+            )
             encrypted_payload = file_bytes
 
         total_size = len(encrypted_payload)
@@ -567,12 +583,14 @@ def chunk_and_embed_file(input_file_path, cover_images, out_dir, public_key_path
             chunk_bytes = encrypted_payload[offset : offset + take]
 
             # simple header for the chunk
-            header = json.dumps({
-                "index": idx,
-                "payload_len": total_size,
-                "chunk_len": len(chunk_bytes),
-                "orig_name": os.path.basename(input_file_path),
-            }).encode("utf-8")
+            header = json.dumps(
+                {
+                    "index": idx,
+                    "payload_len": total_size,
+                    "chunk_len": len(chunk_bytes),
+                    "orig_name": os.path.basename(input_file_path),
+                }
+            ).encode("utf-8")
 
             combined = header + b"\n\n" + chunk_bytes
 
@@ -624,12 +642,24 @@ def chunk_and_embed_file(input_file_path, cover_images, out_dir, public_key_path
                     nsym = max(0, nsym // 2)
 
             if encoded_blob is None:
-                print(f"[-] Could not fit chunk into cover image {cover} (insufficient capacity)")
+                print(
+                    f"[-] Could not fit chunk into cover image {cover} (insufficient capacity)"
+                )
                 return False
 
             sha = hashlib.sha256(encoded_blob).hexdigest()
-            chunks.append({"cover": cover, "data": encoded_blob, "sha256": sha, "nsym": nsym})
-            manifest["chunks"].append({"index": idx, "cover": os.path.basename(cover), "sha256": sha, "chunk_len": len(chunk_bytes), "nsym": nsym})
+            chunks.append(
+                {"cover": cover, "data": encoded_blob, "sha256": sha, "nsym": nsym}
+            )
+            manifest["chunks"].append(
+                {
+                    "index": idx,
+                    "cover": os.path.basename(cover),
+                    "sha256": sha,
+                    "chunk_len": len(chunk_bytes),
+                    "nsym": nsym,
+                }
+            )
 
             offset += take
 
@@ -637,7 +667,9 @@ def chunk_and_embed_file(input_file_path, cover_images, out_dir, public_key_path
         manifest["total_chunks"] = total_chunks
 
         if offset < total_size:
-            print("[-] Not enough cover images to fit the payload. Provide more or larger images.")
+            print(
+                "[-] Not enough cover images to fit the payload. Provide more or larger images."
+            )
             return False
 
         # Ensure output directory
@@ -646,10 +678,12 @@ def chunk_and_embed_file(input_file_path, cover_images, out_dir, public_key_path
         # Embed each chunk into corresponding cover image
         out_images = []
         for i, c in enumerate(chunks):
-            out_name = os.path.join(out_dir, f"stego_chunk_{i}_{os.path.basename(c['cover'])}")
+            out_name = os.path.join(
+                out_dir, f"stego_chunk_{i}_{os.path.basename(c['cover'])}"
+            )
             # keep extension .png
-            if not out_name.lower().endswith('.png'):
-                out_name = out_name + '.png'
+            if not out_name.lower().endswith(".png"):
+                out_name = out_name + ".png"
 
             ok = embed_bytes_to_image(c["cover"], c["data"], out_name)
             if not ok:
@@ -679,9 +713,13 @@ def chunk_and_embed_file(input_file_path, cover_images, out_dir, public_key_path
                 os.remove(manifest_path)
             except Exception:
                 pass
-            print(f"[+] Finished embedding {total_chunks} chunks. Encrypted manifest saved to {manifest_enc_path}")
+            print(
+                f"[+] Finished embedding {total_chunks} chunks. Encrypted manifest saved to {manifest_enc_path}"
+            )
         else:
-            print(f"[+] Finished embedding {total_chunks} chunks. Manifest saved to {manifest_path}")
+            print(
+                f"[+] Finished embedding {total_chunks} chunks. Manifest saved to {manifest_path}"
+            )
         return True
 
     except Exception as e:
@@ -689,7 +727,9 @@ def chunk_and_embed_file(input_file_path, cover_images, out_dir, public_key_path
         return False
 
 
-def reassemble_from_images(image_paths, output_file_path, private_key_path=None, password=None):
+def reassemble_from_images(
+    image_paths, output_file_path, private_key_path=None, password=None
+):
     """Extract chunks from images (given in order or unsorted), reassemble, and decrypt to produce original file."""
     try:
         extracted_chunks = []
@@ -786,26 +826,76 @@ def _run_args_and_exit():
     # chunk & embed
     p_chunk = sub.add_parser("chunk")
     p_chunk.add_argument("--infile", required=True)
-    p_chunk.add_argument("--covers", required=True, help="Comma-separated cover image paths")
+    p_chunk.add_argument(
+        "--covers", required=True, help="Comma-separated cover image paths"
+    )
     p_chunk.add_argument("--outdir", required=True)
     p_chunk.add_argument("--public-key", dest="public_key")
     p_chunk.add_argument("--password")
     p_chunk.add_argument("--rs-nsym", type=int)
     p_chunk.add_argument("--rs-percent", type=float)
-    p_chunk.add_argument("--dry-run-estimate", action="store_true", help="Estimate nsym/percent for expected corruption and exit")
-    p_chunk.add_argument("--expected-corruption", type=float, default=0.02, help="Expected fraction of byte corruption (e.g., 0.02 for 2%) used by estimator")
-    p_chunk.add_argument("--safety-factor", type=float, default=1.5, help="Safety multiplier used by estimator")
-    p_chunk.add_argument("--auto-tune", action="store_true", help="Automatically increase RS parity until simulated corruption recovery succeeds")
-    p_chunk.add_argument("--rs-start", type=float, default=5.0, help="Starting RS percent for auto-tune (percent)")
-    p_chunk.add_argument("--rs-step", type=float, default=5.0, help="RS percent increment step for auto-tune (percent)")
-    p_chunk.add_argument("--rs-max", type=float, default=35.0, help="Maximum RS percent for auto-tune (percent)")
-    p_chunk.add_argument("--verify-private-key", dest="verify_private_key", help="Path to private key used to verify recovery during auto-tune")
-    p_chunk.add_argument("--verify-password", dest="verify_password", help="Password used to verify recovery during auto-tune")
-    p_chunk.add_argument("--jpeg-qualities", dest="jpeg_qualities", help="Comma-separated JPEG qualities to try during auto-tune (e.g. 85,75,65)", default="85,75,65")
+    p_chunk.add_argument(
+        "--dry-run-estimate",
+        action="store_true",
+        help="Estimate nsym/percent for expected corruption and exit",
+    )
+    p_chunk.add_argument(
+        "--expected-corruption",
+        type=float,
+        default=0.02,
+        help="Expected fraction of byte corruption (e.g., 0.02 for 2%) used by estimator",
+    )
+    p_chunk.add_argument(
+        "--safety-factor",
+        type=float,
+        default=1.5,
+        help="Safety multiplier used by estimator",
+    )
+    p_chunk.add_argument(
+        "--auto-tune",
+        action="store_true",
+        help="Automatically increase RS parity until simulated corruption recovery succeeds",
+    )
+    p_chunk.add_argument(
+        "--rs-start",
+        type=float,
+        default=5.0,
+        help="Starting RS percent for auto-tune (percent)",
+    )
+    p_chunk.add_argument(
+        "--rs-step",
+        type=float,
+        default=5.0,
+        help="RS percent increment step for auto-tune (percent)",
+    )
+    p_chunk.add_argument(
+        "--rs-max",
+        type=float,
+        default=35.0,
+        help="Maximum RS percent for auto-tune (percent)",
+    )
+    p_chunk.add_argument(
+        "--verify-private-key",
+        dest="verify_private_key",
+        help="Path to private key used to verify recovery during auto-tune",
+    )
+    p_chunk.add_argument(
+        "--verify-password",
+        dest="verify_password",
+        help="Password used to verify recovery during auto-tune",
+    )
+    p_chunk.add_argument(
+        "--jpeg-qualities",
+        dest="jpeg_qualities",
+        help="Comma-separated JPEG qualities to try during auto-tune (e.g. 85,75,65)",
+        default="85,75,65",
+    )
 
     # reassemble
     p_reas = sub.add_parser("reassemble")
-    p_reas.add_argument("--images", required=True, help="Comma-separated stego image paths")
+    p_reas.add_argument(
+        "--images", required=True, help="Comma-separated stego image paths"
+    )
     p_reas.add_argument("--outfile", required=True)
     p_reas.add_argument("--private-key", dest="private_key")
     p_reas.add_argument("--password")
@@ -825,32 +915,65 @@ def _run_args_and_exit():
         if getattr(args, "dry_run_estimate", False):
             # Do a dry-run estimate and exit -- need combined length estimate.
             # Read input file and estimate per-chunk combined length as file size (single chunk)
-            with open(args.infile, 'rb') as rf:
+            with open(args.infile, "rb") as rf:
                 payload = rf.read()
-            combined_len = len(payload)  # header overhead unknown here; use payload as proxy
-            nsym_suggest, pct_suggest = estimate_nsym_for_expected_corruption(combined_len, expected_corrupt_fraction=args.expected_corruption, safety_factor=args.safety_factor)
-            print(f"Estimated nsym: {nsym_suggest}, suggested RS percent: {pct_suggest*100:.2f}% for combined_len={combined_len}")
+            combined_len = len(
+                payload
+            )  # header overhead unknown here; use payload as proxy
+            nsym_suggest, pct_suggest = estimate_nsym_for_expected_corruption(
+                combined_len,
+                expected_corrupt_fraction=args.expected_corruption,
+                safety_factor=args.safety_factor,
+            )
+            print(
+                f"Estimated nsym: {nsym_suggest}, suggested RS percent: {pct_suggest * 100:.2f}% for combined_len={combined_len}"
+            )
             sys.exit(0)
 
         if getattr(args, "auto_tune", False):
             # parse jpeg qualities
             try:
-                jpeg_quals = [int(q) for q in args.jpeg_qualities.split(',') if q.strip()]
+                jpeg_quals = [
+                    int(q) for q in args.jpeg_qualities.split(",") if q.strip()
+                ]
             except Exception:
                 jpeg_quals = [85, 75, 65]
 
-            ok = auto_tune_and_embed(args.infile, covers, args.outdir, public_key_path=args.public_key, password=args.password,
-                                     start_percent=args.rs_start, step_percent=args.rs_step, max_percent=args.rs_max,
-                                     verify_private_key=args.verify_private_key, verify_password=args.verify_password,
-                                     expected_corrupt_fraction=args.expected_corruption, safety_factor=args.safety_factor,
-                                     jpeg_qualities=jpeg_quals)
+            ok = auto_tune_and_embed(
+                args.infile,
+                covers,
+                args.outdir,
+                public_key_path=args.public_key,
+                password=args.password,
+                start_percent=args.rs_start,
+                step_percent=args.rs_step,
+                max_percent=args.rs_max,
+                verify_private_key=args.verify_private_key,
+                verify_password=args.verify_password,
+                expected_corrupt_fraction=args.expected_corruption,
+                safety_factor=args.safety_factor,
+                jpeg_qualities=jpeg_quals,
+            )
         else:
-            ok = chunk_and_embed_file(args.infile, covers, args.outdir, public_key_path=args.public_key, password=args.password, rs_nsym_override=rs_n, rs_percent_override=rs_p)
+            ok = chunk_and_embed_file(
+                args.infile,
+                covers,
+                args.outdir,
+                public_key_path=args.public_key,
+                password=args.password,
+                rs_nsym_override=rs_n,
+                rs_percent_override=rs_p,
+            )
         sys.exit(0 if ok else 2)
 
     if args.cmd == "reassemble":
         images = [c.strip() for c in args.images.split(",") if c.strip()]
-        ok = reassemble_from_images(images, args.outfile, private_key_path=args.private_key, password=args.password)
+        ok = reassemble_from_images(
+            images,
+            args.outfile,
+            private_key_path=args.private_key,
+            password=args.password,
+        )
         sys.exit(0 if ok else 2)
 
     return True
@@ -859,10 +982,11 @@ def _run_args_and_exit():
 def _corrupt_lsb_image(src_path, dst_path, flips=200):
     """Flip random LSBs in the red channel of the image to simulate mild corruption."""
     try:
-        img = Image.open(src_path).convert('RGB')
+        img = Image.open(src_path).convert("RGB")
         pixels = img.load()
         width, height = img.size
         import random
+
         for i in range(flips):
             x = random.randrange(width)
             y = random.randrange(height)
@@ -879,12 +1003,13 @@ def _corrupt_lsb_image(src_path, dst_path, flips=200):
 def _zero_region_image(src_path, dst_path, region_fraction=0.15):
     """Zero out a random rectangular region to simulate cropping or erasure."""
     try:
-        img = Image.open(src_path).convert('RGB')
+        img = Image.open(src_path).convert("RGB")
         pixels = img.load()
         width, height = img.size
         rw = max(1, int(width * region_fraction))
         rh = max(1, int(height * region_fraction))
         import random
+
         x0 = random.randint(0, max(0, width - rw))
         y0 = random.randint(0, max(0, height - rh))
         for y in range(y0, min(height, y0 + rh)):
@@ -903,19 +1028,19 @@ def _simulate_jpeg_recompress(src_path, dst_path, quality=80):
     Saves output to `dst_path` (can be .jpg or .png). Returns True on success.
     """
     try:
-        img = Image.open(src_path).convert('RGB')
+        img = Image.open(src_path).convert("RGB")
         # Write to a temporary JPEG then reopen and save to dst_path if requested
         tmp_jpeg = dst_path
         # If dst_path endswith .png, we still create a jpeg and then save png
-        if dst_path.lower().endswith('.png'):
-            tmp_jpeg = dst_path[:-4] + '.jpg'
+        if dst_path.lower().endswith(".png"):
+            tmp_jpeg = dst_path[:-4] + ".jpg"
 
-        img.save(tmp_jpeg, format='JPEG', quality=int(quality))
+        img.save(tmp_jpeg, format="JPEG", quality=int(quality))
 
-        if dst_path.lower().endswith('.png'):
+        if dst_path.lower().endswith(".png"):
             # reopen jpeg and save as png to preserve extension
-            img2 = Image.open(tmp_jpeg).convert('RGB')
-            img2.save(dst_path, format='PNG')
+            img2 = Image.open(tmp_jpeg).convert("RGB")
+            img2.save(dst_path, format="PNG")
             try:
                 os.remove(tmp_jpeg)
             except Exception:
@@ -929,7 +1054,7 @@ def _simulate_jpeg_recompress(src_path, dst_path, quality=80):
 def _simulate_resize_roundtrip(src_path, dst_path, scale_down=0.9):
     """Resize down by `scale_down` then resize back to original size to simulate scaling artifacts."""
     try:
-        img = Image.open(src_path).convert('RGB')
+        img = Image.open(src_path).convert("RGB")
         width, height = img.size
         new_w = max(1, int(width * float(scale_down)))
         new_h = max(1, int(height * float(scale_down)))
@@ -942,10 +1067,22 @@ def _simulate_resize_roundtrip(src_path, dst_path, scale_down=0.9):
         return False
 
 
-def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=None, password=None,
-                        start_percent=5.0, step_percent=5.0, max_percent=35.0,
-                        verify_private_key=None, verify_password=None, max_iterations=None,
-                        expected_corrupt_fraction=0.02, safety_factor=1.5, jpeg_qualities=None):
+def auto_tune_and_embed(
+    input_file_path,
+    cover_images,
+    out_dir,
+    public_key_path=None,
+    password=None,
+    start_percent=5.0,
+    step_percent=5.0,
+    max_percent=35.0,
+    verify_private_key=None,
+    verify_password=None,
+    max_iterations=None,
+    expected_corrupt_fraction=0.02,
+    safety_factor=1.5,
+    jpeg_qualities=None,
+):
     """Auto-tune RS parity by embedding with increasing parity percent and verifying recovery under simulated corruption.
 
     Requires either `verify_private_key` (for RSA) or `verify_password` (for password mode) to validate reassembly.
@@ -955,7 +1092,7 @@ def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=
             print("[-] Input file not found for auto-tune.")
             return False
 
-        with open(input_file_path, 'rb') as f:
+        with open(input_file_path, "rb") as f:
             original_bytes = f.read()
 
         orig_sha = hashlib.sha256(original_bytes).hexdigest()
@@ -968,29 +1105,41 @@ def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=
             per_chunk_payload = math.ceil(total_size / num_covers)
             header_estimate = 128
             combined_len = per_chunk_payload + header_estimate
-            nsym_est, pct_frac = estimate_nsym_for_expected_corruption(combined_len, expected_corrupt_fraction=expected_corrupt_fraction, safety_factor=safety_factor)
+            nsym_est, pct_frac = estimate_nsym_for_expected_corruption(
+                combined_len,
+                expected_corrupt_fraction=expected_corrupt_fraction,
+                safety_factor=safety_factor,
+            )
             pct_est = pct_frac * 100.0
             # ensure starting percent is at least estimator suggestion
             if start_percent is None:
                 start_percent = pct_est
             else:
                 start_percent = max(float(start_percent), pct_est)
-            print(f"[*] Auto-tune seeded by estimator: per_chunk_len={combined_len}, suggested nsym={nsym_est}, pct={pct_est:.2f}%; start_percent set to {start_percent}%")
+            print(
+                f"[*] Auto-tune seeded by estimator: per_chunk_len={combined_len}, suggested nsym={nsym_est}, pct={pct_est:.2f}%; start_percent set to {start_percent}%"
+            )
         except Exception:
             pass
 
         os.makedirs(out_dir, exist_ok=True)
 
         # Setup logger for auto-tune attempts
-        log_path = os.path.join(out_dir, 'auto_tune.log')
-        logger = logging.getLogger(f'auto_tune_{id(out_dir)}')
+        log_path = os.path.join(out_dir, "auto_tune.log")
+        logger = logging.getLogger(f"auto_tune_{id(out_dir)}")
         logger.setLevel(logging.INFO)
         # Ensure no duplicate handlers
-        if not any(isinstance(h, logging.FileHandler) and h.baseFilename == os.path.abspath(log_path) for h in logger.handlers):
+        if not any(
+            isinstance(h, logging.FileHandler)
+            and h.baseFilename == os.path.abspath(log_path)
+            for h in logger.handlers
+        ):
             fh = logging.FileHandler(log_path)
-            fh.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+            fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
             logger.addHandler(fh)
-        logger.info(f"Starting auto-tune for {input_file_path} covers={len(cover_images)}")
+        logger.info(
+            f"Starting auto-tune for {input_file_path} covers={len(cover_images)}"
+        )
 
         tried = []
         iter_count = 0
@@ -1009,79 +1158,106 @@ def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=
             except Exception:
                 pass
 
-            ok = chunk_and_embed_file(input_file_path, cover_images, attempt_dir, public_key_path=public_key_path, password=password, rs_percent_override=pct)
+            ok = chunk_and_embed_file(
+                input_file_path,
+                cover_images,
+                attempt_dir,
+                public_key_path=public_key_path,
+                password=password,
+                rs_percent_override=pct,
+            )
             if not ok:
                 logger.info(f"Attempt {iter_count} embed failed at pct={pct}%")
-                tried.append((pct, False, 'embed_failed'))
+                tried.append((pct, False, "embed_failed"))
                 pct += float(step_percent)
                 continue
 
             # find stego images
-            stego_images = [os.path.join(attempt_dir, p) for p in os.listdir(attempt_dir) if p.lower().endswith('.png')]
+            stego_images = [
+                os.path.join(attempt_dir, p)
+                for p in os.listdir(attempt_dir)
+                if p.lower().endswith(".png")
+            ]
             if not stego_images:
-                tried.append((pct, False, 'no_stego_images'))
+                tried.append((pct, False, "no_stego_images"))
                 pct += float(step_percent)
                 continue
 
             # simulate corruption variations on first stego image and attempt recovery
             test_img = stego_images[0]
-            corrupted = os.path.join(attempt_dir, 'corrupted.png')
+            corrupted = os.path.join(attempt_dir, "corrupted.png")
             _corrupt_lsb_image(test_img, corrupted, flips=300)
-            zeroed = os.path.join(attempt_dir, 'zeroed.png')
+            zeroed = os.path.join(attempt_dir, "zeroed.png")
             _zero_region_image(corrupted, zeroed, region_fraction=0.15)
 
             # JPEG recompression variants (try multiple qualities)
             jpeg_paths = []
             quals = jpeg_qualities or [85, 75, 65]
             for q in quals:
-                qp = os.path.join(attempt_dir, f'recompress_q{q}.jpg')
+                qp = os.path.join(attempt_dir, f"recompress_q{q}.jpg")
                 okj = _simulate_jpeg_recompress(test_img, qp, quality=q)
                 if okj:
                     jpeg_paths.append(qp)
 
             # Resize roundtrip variant
-            resized = os.path.join(attempt_dir, 'resized.png')
+            resized = os.path.join(attempt_dir, "resized.png")
             _simulate_resize_roundtrip(test_img, resized, scale_down=0.9)
 
             # include the raw LSB-flipped corrupted image first, then zeroed region, JPEGs and resized
             variants = [corrupted, zeroed] + jpeg_paths + [resized]
             verified_any = False
             for variant in variants:
-                tmp_reassembled = os.path.join(attempt_dir, f'reassembled_check_{os.path.basename(variant)}.bin')
+                tmp_reassembled = os.path.join(
+                    attempt_dir, f"reassembled_check_{os.path.basename(variant)}.bin"
+                )
                 verify_ok = False
                 if verify_password:
-                    verify_ok = reassemble_from_images([variant], tmp_reassembled, password=verify_password)
+                    verify_ok = reassemble_from_images(
+                        [variant], tmp_reassembled, password=verify_password
+                    )
                 elif verify_private_key:
-                    verify_ok = reassemble_from_images([variant], tmp_reassembled, private_key_path=verify_private_key)
+                    verify_ok = reassemble_from_images(
+                        [variant], tmp_reassembled, private_key_path=verify_private_key
+                    )
                 else:
-                    print("[-] No verification credential provided (private key or password). Auto-tune requires verification credentials.")
+                    print(
+                        "[-] No verification credential provided (private key or password). Auto-tune requires verification credentials."
+                    )
                     return False
 
                 if not verify_ok:
-                    logger.info(f"Attempt {iter_count} pct={pct}% variant={os.path.basename(variant)} verify_failed")
-                    tried.append((pct, False, f'verify_failed:{os.path.basename(variant)}'))
+                    logger.info(
+                        f"Attempt {iter_count} pct={pct}% variant={os.path.basename(variant)} verify_failed"
+                    )
+                    tried.append(
+                        (pct, False, f"verify_failed:{os.path.basename(variant)}")
+                    )
                     continue
 
                 # check SHA
                 try:
-                    with open(tmp_reassembled, 'rb') as rf:
+                    with open(tmp_reassembled, "rb") as rf:
                         got = rf.read()
                     got_sha = hashlib.sha256(got).hexdigest()
                 except Exception:
                     got_sha = None
 
                 if got_sha == orig_sha:
-                    logger.info(f"Attempt {iter_count} pct={pct}% variant={os.path.basename(variant)} success (sha match)")
-                    print(f"[+] Auto-tune succeeded with RS percent {pct}% on variant {os.path.basename(variant)}")
+                    logger.info(
+                        f"Attempt {iter_count} pct={pct}% variant={os.path.basename(variant)} success (sha match)"
+                    )
+                    print(
+                        f"[+] Auto-tune succeeded with RS percent {pct}% on variant {os.path.basename(variant)}"
+                    )
                     # Move final attempt_dir contents into out_dir/final
-                    final_dir = os.path.join(out_dir, 'final')
+                    final_dir = os.path.join(out_dir, "final")
                     shutil.rmtree(final_dir, ignore_errors=True)
                     shutil.copytree(attempt_dir, final_dir)
 
                     # For compatibility with older tools/tests, also copy any stego PNGs into out_dir root
                     try:
                         for fname in os.listdir(final_dir):
-                            if fname.lower().endswith('.png'):
+                            if fname.lower().endswith(".png"):
                                 srcf = os.path.join(final_dir, fname)
                                 dstf = os.path.join(out_dir, fname)
                                 try:
@@ -1095,50 +1271,69 @@ def auto_tune_and_embed(input_file_path, cover_images, out_dir, public_key_path=
                     try:
                         src_log = log_path
                         if os.path.exists(src_log):
-                            shutil.copy(src_log, os.path.join(final_dir, 'auto_tune.log'))
-                            log_ref = 'auto_tune.log'
+                            shutil.copy(
+                                src_log, os.path.join(final_dir, "auto_tune.log")
+                            )
+                            log_ref = "auto_tune.log"
                         else:
                             log_ref = None
                     except Exception:
                         log_ref = None
 
                     # annotate manifest if present (or write a sidecar if manifest is encrypted)
-                    manifest_path = os.path.join(final_dir, 'manifest.json')
+                    manifest_path = os.path.join(final_dir, "manifest.json")
                     if not os.path.exists(manifest_path):
-                        manifest_path = os.path.join(final_dir, 'manifest.json.enc') or manifest_path
+                        manifest_path = (
+                            os.path.join(final_dir, "manifest.json.enc")
+                            or manifest_path
+                        )
                     try:
-                        if os.path.exists(manifest_path) and manifest_path.endswith('.json'):
-                            with open(manifest_path, 'r') as mf:
+                        if os.path.exists(manifest_path) and manifest_path.endswith(
+                            ".json"
+                        ):
+                            with open(manifest_path, "r") as mf:
                                 mfj = json.load(mf)
-                            mfj.setdefault('auto_tune', {})
-                            mfj['auto_tune']['rs_percent'] = pct
-                            mfj['auto_tune']['iterations'] = iter_count
-                            mfj['auto_tune']['variant'] = os.path.basename(variant)
+                            mfj.setdefault("auto_tune", {})
+                            mfj["auto_tune"]["rs_percent"] = pct
+                            mfj["auto_tune"]["iterations"] = iter_count
+                            mfj["auto_tune"]["variant"] = os.path.basename(variant)
                             if log_ref:
-                                mfj['auto_tune']['log'] = log_ref
-                            with open(manifest_path, 'w') as mfw:
+                                mfj["auto_tune"]["log"] = log_ref
+                            with open(manifest_path, "w") as mfw:
                                 json.dump(mfj, mfw, indent=2)
                         else:
                             # can't modify encrypted manifest; write a sidecar
-                            sidecar = os.path.join(final_dir, 'manifest.auto_tune.json')
-                            sidecar_obj = {'rs_percent': pct, 'iterations': iter_count, 'variant': os.path.basename(variant)}
+                            sidecar = os.path.join(final_dir, "manifest.auto_tune.json")
+                            sidecar_obj = {
+                                "rs_percent": pct,
+                                "iterations": iter_count,
+                                "variant": os.path.basename(variant),
+                            }
                             if log_ref:
-                                sidecar_obj['auto_tune_log'] = log_ref
-                            with open(sidecar, 'w') as sf:
+                                sidecar_obj["auto_tune_log"] = log_ref
+                            with open(sidecar, "w") as sf:
                                 json.dump(sidecar_obj, sf, indent=2)
                     except Exception:
                         pass
 
-                    tried.append((pct, True, f'success:{os.path.basename(variant)}'))
-                    logger.info(f"Auto-tune completed: pct={pct}% variant={os.path.basename(variant)} iterations={iter_count}")
+                    tried.append((pct, True, f"success:{os.path.basename(variant)}"))
+                    logger.info(
+                        f"Auto-tune completed: pct={pct}% variant={os.path.basename(variant)} iterations={iter_count}"
+                    )
                     return True
                 else:
-                    logger.info(f"Attempt {iter_count} pct={pct}% variant={os.path.basename(variant)} sha_mismatch")
-                    tried.append((pct, False, f'sha_mismatch:{os.path.basename(variant)}'))
+                    logger.info(
+                        f"Attempt {iter_count} pct={pct}% variant={os.path.basename(variant)} sha_mismatch"
+                    )
+                    tried.append(
+                        (pct, False, f"sha_mismatch:{os.path.basename(variant)}")
+                    )
 
             attempt_end = math.floor(time.time())
             duration = attempt_end - attempt_start
-            logger.info(f"Attempt {iter_count} finished pct={pct}% duration_sec={duration} tried_variants={[os.path.basename(v) for v in variants]}")
+            logger.info(
+                f"Attempt {iter_count} finished pct={pct}% duration_sec={duration} tried_variants={[os.path.basename(v) for v in variants]}"
+            )
             pct += float(step_percent)
 
         print(f"[-] Auto-tune failed after trying: {tried}")
@@ -1214,24 +1409,29 @@ if __name__ == "__main__":
     elif choice == "5":
         infile = input("Path to input file to embed: ").strip()
         covers_raw = input("Comma-separated list of cover image paths: ").strip()
-        covers = [c.strip() for c in covers_raw.split(',') if c.strip()]
+        covers = [c.strip() for c in covers_raw.split(",") if c.strip()]
         out_dir = input("Output directory for stego images: ").strip() or "stego_out"
         use_enc = input("Encrypt with RSA public key? (y/n): ").lower().strip()
         pub_key = None
         pwd = None
-        if use_enc == 'y':
-            pub_key = input("Path to public key (public_key.pem): ").strip() or "public_key.pem"
+        if use_enc == "y":
+            pub_key = (
+                input("Path to public key (public_key.pem): ").strip()
+                or "public_key.pem"
+            )
         else:
             use_pwd = input("Encrypt with password instead? (y/n): ").lower().strip()
-            if use_pwd == 'y':
+            if use_pwd == "y":
                 pwd = input("Enter password: ").strip()
 
         # RS parity override: either absolute nsym or percent (e.g. '15%')
-        rs_input = input("RS parity (absolute nsym or percent like '15%') or leave empty for heuristic: ").strip()
+        rs_input = input(
+            "RS parity (absolute nsym or percent like '15%') or leave empty for heuristic: "
+        ).strip()
         rs_override = None
         rs_percent = None
         if rs_input:
-            if rs_input.endswith('%'):
+            if rs_input.endswith("%"):
                 try:
                     rs_percent = float(rs_input[:-1])
                 except Exception:
@@ -1242,27 +1442,48 @@ if __name__ == "__main__":
                 except Exception:
                     rs_override = None
 
-        ok = chunk_and_embed_file(infile, covers, out_dir, public_key_path=pub_key, password=pwd, rs_nsym_override=rs_override, rs_percent_override=rs_percent)
+        ok = chunk_and_embed_file(
+            infile,
+            covers,
+            out_dir,
+            public_key_path=pub_key,
+            password=pwd,
+            rs_nsym_override=rs_override,
+            rs_percent_override=rs_percent,
+        )
         if ok:
             print("[+] Chunk & embed completed.")
         else:
             print("[-] Chunk & embed failed.")
 
     elif choice == "6":
-        images_raw = input("Comma-separated list of stego image paths (in order if possible): ").strip()
-        images = [c.strip() for c in images_raw.split(',') if c.strip()]
-        out_file = input("Path for output file (reassembled): ").strip() or "reassembled.bin"
+        images_raw = input(
+            "Comma-separated list of stego image paths (in order if possible): "
+        ).strip()
+        images = [c.strip() for c in images_raw.split(",") if c.strip()]
+        out_file = (
+            input("Path for output file (reassembled): ").strip() or "reassembled.bin"
+        )
         use_enc = input("Was payload encrypted? (y/n): ").lower().strip()
         priv_key = None
         pwd = None
-        if use_enc == 'y':
-            which = input("Decrypt with RSA private key or password? (rsa/pwd): ").lower().strip()
-            if which == 'rsa':
-                priv_key = input("Path to private key (private_key.pem): ").strip() or "private_key.pem"
+        if use_enc == "y":
+            which = (
+                input("Decrypt with RSA private key or password? (rsa/pwd): ")
+                .lower()
+                .strip()
+            )
+            if which == "rsa":
+                priv_key = (
+                    input("Path to private key (private_key.pem): ").strip()
+                    or "private_key.pem"
+                )
             else:
                 pwd = input("Enter password: ").strip()
 
-        ok = reassemble_from_images(images, out_file, private_key_path=priv_key, password=pwd)
+        ok = reassemble_from_images(
+            images, out_file, private_key_path=priv_key, password=pwd
+        )
         if ok:
             print("[+] Reassembly successful.")
         else:

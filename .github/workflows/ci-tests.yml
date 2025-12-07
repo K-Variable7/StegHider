@@ -2,9 +2,9 @@ name: CI - Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   test:
@@ -14,12 +14,15 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
       - name: Install system deps
         run: sudo apt-get update && sudo apt-get install -y build-essential libgmp-dev
       - name: Install pip deps
         run: |
           python3 -m pip install --upgrade pip setuptools wheel
           python3 -m pip install -r requirements.txt
+      - name: Install package
+        run: |
+          python3 -m pip install -e .
       - name: Run pipeline tests
         run: python3 tests/run_pipeline_tests.py
