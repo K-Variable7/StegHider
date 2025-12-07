@@ -98,6 +98,77 @@
             font-size: 12px;
         }
 
+        .how-it-works-section {
+            margin: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .expand-btn {
+            width: 100%;
+            background: linear-gradient(135deg, var(--card-bg), #2a2a2a);
+            border: none;
+            color: var(--text-color);
+            padding: 15px 20px;
+            text-align: left;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            transition: background 0.3s ease;
+        }
+
+        .expand-btn:hover {
+            background: linear-gradient(135deg, #2a2a2a, var(--card-bg));
+        }
+
+        .expand-icon {
+            margin-right: 10px;
+            font-size: 14px;
+            transition: transform 0.3s ease;
+        }
+
+        .expand-hint {
+            margin-left: auto;
+            font-size: 12px;
+            opacity: 0.6;
+            font-weight: normal;
+        }
+
+        .how-it-works-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+            background: var(--card-bg);
+        }
+
+        .how-it-works-content.expanded {
+            max-height: 800px; /* Adjust based on content */
+        }
+
+        .tech-specs {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .spec-item {
+            background: rgba(0, 212, 212, 0.1);
+            padding: 10px 15px;
+            border-radius: 6px;
+            border-left: 3px solid #00BCD4;
+            font-size: 14px;
+        }
+
+        @media (min-width: 600px) {
+            .tech-specs {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
         .loading-overlay {
             position: fixed;
             top: 0;
@@ -494,28 +565,46 @@
             <h1>Steg<span>Hider</span></h1>
         </div>
 
-        <!-- DEMO SECTION -->
-        <div class="demo-section">
-            <h3>🚀 How It Works</h3>
-            <p>StegHider uses Least Significant Bit (LSB) steganography to hide data invisibly within image pixels. Here's a visual demo:</p>
-            <div class="demo-grid">
-                <div class="demo-item">
-                    <img src="/static/images/demo-original.png" alt="Original Image" onerror="this.style.display='none'">
-                    <p>Original Image</p>
-                    <small>4,096 bytes</small>
+        <!-- COLLAPSIBLE HOW IT WORKS -->
+        <div class="how-it-works-section">
+            <button class="expand-btn" onclick="toggleHowItWorks()">
+                <span class="expand-icon">▶</span>
+                How StegHider Works
+                <span class="expand-hint">(Click to expand)</span>
+            </button>
+            <div id="how-it-works-content" class="how-it-works-content">
+                <h3>🚀 Technical Overview</h3>
+                <p>StegHider uses Least Significant Bit (LSB) steganography to hide data invisibly within image pixels. Here's a visual demo:</p>
+                <div class="demo-grid">
+                    <div class="demo-item">
+                        <img src="/static/images/demo-original.png" alt="Original Image" onerror="this.style.display='none'">
+                        <p>Original Image</p>
+                        <small>4,096 bytes</small>
+                    </div>
+                    <div class="demo-item">
+                        <img src="/static/images/demo-stego.png" alt="Stego Image" onerror="this.style.display='none'">
+                        <p>With Hidden Message</p>
+                        <small>4,098 bytes (+2 bytes)</small>
+                    </div>
                 </div>
-                <div class="demo-item">
-                    <img src="/static/images/demo-stego.png" alt="Stego Image" onerror="this.style.display='none'">
-                    <p>With Hidden Message</p>
-                    <small>4,098 bytes (+2 bytes)</small>
+                <div class="tech-specs">
+                    <div class="spec-item">
+                        <strong>📸 Steganography:</strong> LSB modification (up to 0.5 bits/pixel)
+                    </div>
+                    <div class="spec-item">
+                        <strong>🔐 Encryption:</strong> AES-GCM 256-bit + PBKDF2 key derivation
+                    </div>
+                    <div class="spec-item">
+                        <strong>📦 Compression:</strong> zlib level 9 (85%+ size reduction)
+                    </div>
+                    <div class="spec-item">
+                        <strong>🛡️ Robustness:</strong> Reed-Solomon error correction
+                    </div>
+                    <div class="spec-item">
+                        <strong>🔒 Privacy:</strong> Zero server storage, client-side processing
+                    </div>
                 </div>
             </div>
-            <p style="margin-top: 15px; font-size: 14px; color: #888;">
-                <strong>Capacity:</strong> ~1MB text or files per 4K image<br>
-                <strong>Encryption:</strong> AES-GCM + PBKDF2 (military-grade)<br>
-                <strong>Robustness:</strong> Reed-Solomon error correction<br>
-                <strong>Privacy:</strong> Zero server storage, client-side processing
-            </p>
         </div>
 
         <div class="tabs">
@@ -962,6 +1051,23 @@
                 preview.style.display = 'none';
                 preview.src = '';
             });
+        }
+
+        // Toggle How It Works section
+        function toggleHowItWorks() {
+            var content = document.getElementById('how-it-works-content');
+            var icon = document.querySelector('.expand-icon');
+            var hint = document.querySelector('.expand-hint');
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                icon.textContent = '▶';
+                hint.textContent = '(Click to expand)';
+            } else {
+                content.classList.add('expanded');
+                icon.textContent = '▼';
+                hint.textContent = '(Click to collapse)';
+            }
         }
 
         // Show loading overlay on form submit
