@@ -166,7 +166,7 @@ def encrypt_message_password(data, password):
 
     cipher = Cipher(algorithms.AES(key), modes.GCM(iv))
     encryptor = cipher.encryptor()
-    ciphertext = encryptor.encrypt(data)
+    ciphertext = encryptor.update(data) + encryptor.finalize()
     tag = encryptor.tag
 
     # Return salt + iv + ciphertext + tag (to match Web Crypto format)
@@ -188,7 +188,7 @@ def decrypt_message_password(encrypted_data, password):
         key = derive_key(password, salt, encode=False)  # Raw bytes for AES
         cipher = Cipher(algorithms.AES(key), modes.GCM(iv, tag))
         decryptor = cipher.decryptor()
-        return decryptor.decrypt(ciphertext)
+        return decryptor.update(ciphertext) + decryptor.finalize()
     except Exception:
         # Fallback to Fernet (legacy format)
         salt = encrypted_data[:16]
