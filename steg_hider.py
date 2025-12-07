@@ -142,21 +142,24 @@ def simulate_resize_roundtrip(image_path, scale=0.5, output_path=None):
     return output_path
 
 
-def derive_key(password, salt):
-    """Derives a Fernet-compatible key from a password."""
+def derive_key(password, salt, encode=True):
+    """Derives a key from a password. Returns raw bytes by default, base64 for Fernet."""
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,
         iterations=100000,
     )
-    return base64.urlsafe_b64encode(kdf.derive(password.encode()))
+    key = kdf.derive(password.encode())
+    if encode:
+        return base64.urlsafe_b64encode(key)
+    return key
 
 
 def encrypt_message_password(data, password):
     """Encrypts data using a password (PBKDF2 + AES-GCM). Compatible with extension."""
     salt = os.urandom(16)
-    key = derive_key(password, salt)
+    key = derive_key(password, salt, encode=False)  # Raw bytes for AES
     iv = os.urandom(12)  # 96-bit IV for GCM
     if isinstance(data, str):
         data = data.encode()
@@ -182,7 +185,7 @@ def decrypt_message_password(encrypted_data, password):
         ciphertext = ciphertext_and_tag[:-16]
         tag = ciphertext_and_tag[-16:]
 
-        key = derive_key(password, salt)
+        key = derive_key(password, salt, encode=False)  # Raw bytes for AES
         cipher = Cipher(algorithms.AES(key), modes.GCM(iv, tag))
         decryptor = cipher.decryptor()
         return decryptor.decrypt(ciphertext)
@@ -190,7 +193,7 @@ def decrypt_message_password(encrypted_data, password):
         # Fallback to Fernet (legacy format)
         salt = encrypted_data[:16]
         token = encrypted_data[16:]
-        key = derive_key(password, salt)
+        key = derive_key(password, salt, encode=True)  # Base64 for Fernet
         f = Fernet(key)
         return f.decrypt(token)
 
