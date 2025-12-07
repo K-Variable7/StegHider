@@ -104,7 +104,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
+            background-color: rgba(0, 0, 0, 0.9);
             display: none;
             justify-content: center;
             align-items: center;
@@ -114,21 +114,199 @@
         .loading-content {
             text-align: center;
             color: white;
+            max-width: 400px;
         }
 
-        .spinner {
-            border: 4px solid #333;
-            border-top: 4px solid var(--accent-color);
+        .loading-animation {
+            width: 300px;
+            height: 200px;
+            margin: 0 auto 20px;
+            position: relative;
+        }
+
+        .file-stack {
+            position: absolute;
+            left: 50px;
+            top: 20px;
+        }
+
+        .file-icon {
+            width: 40px;
+            height: 50px;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            border-radius: 4px;
+            position: absolute;
+            border: 2px solid #2E7D32;
+            opacity: 0;
+            animation: fileStack 2s ease-in-out infinite;
+        }
+
+        .file-icon:nth-child(1) { animation-delay: 0s; }
+        .file-icon:nth-child(2) { animation-delay: 0.3s; }
+        .file-icon:nth-child(3) { animation-delay: 0.6s; }
+
+        .file-icon::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: 5px;
+            right: 5px;
+            height: 8px;
+            background: #66BB6A;
+            border-radius: 2px;
+        }
+
+        .file-icon::after {
+            content: '📄';
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 16px;
+        }
+
+        @keyframes fileStack {
+            0% { 
+                opacity: 0; 
+                transform: translateY(0) scale(1); 
+            }
+            20% { 
+                opacity: 1; 
+                transform: translateY(0) scale(1); 
+            }
+            60% { 
+                opacity: 1; 
+                transform: translateY(-60px) scale(0.8); 
+            }
+            100% { 
+                opacity: 0; 
+                transform: translateY(-80px) scale(0.3); 
+            }
+        }
+
+        .compression-gear {
+            position: absolute;
+            left: 120px;
+            top: 40px;
+            width: 60px;
+            height: 60px;
+        }
+
+        .gear {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 4px solid #FF9800;
             border-radius: 50%;
+            background: #FF6F00;
+            animation: rotate 3s linear infinite;
+        }
+
+        .gear::before {
+            content: '';
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            bottom: 10px;
+            border: 4px solid #FF9800;
+            border-radius: 50%;
+            background: #212121;
+        }
+
+        .gear:nth-child(2) {
             width: 40px;
             height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
+            left: 10px;
+            top: 10px;
+            animation: rotateReverse 2s linear infinite;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .gear:nth-child(2)::before {
+            top: 5px;
+            left: 5px;
+            right: 5px;
+            bottom: 5px;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes rotateReverse {
+            from { transform: rotate(360deg); }
+            to { transform: rotate(0deg); }
+        }
+
+        .math-display {
+            position: absolute;
+            right: 30px;
+            top: 50px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #00BCD4;
+            opacity: 0;
+            animation: mathFade 4s ease-in-out infinite;
+        }
+
+        .math-line {
+            margin: 5px 0;
+            animation: mathType 0.5s ease-in-out forwards;
+        }
+
+        .math-line:nth-child(1) { animation-delay: 0.5s; }
+        .math-line:nth-child(2) { animation-delay: 1.5s; }
+        .math-line:nth-child(3) { animation-delay: 2.5s; }
+        .math-line:nth-child(4) { animation-delay: 3.5s; }
+
+        @keyframes mathFade {
+            0%, 100% { opacity: 0; }
+            10%, 90% { opacity: 1; }
+        }
+
+        @keyframes mathType {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .output-file {
+            position: absolute;
+            left: 200px;
+            top: 120px;
+            width: 40px;
+            height: 50px;
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            border-radius: 4px;
+            border: 2px solid #0D47A1;
+            opacity: 0;
+            animation: outputAppear 3s ease-in-out infinite;
+        }
+
+        .output-file::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: 5px;
+            right: 5px;
+            height: 8px;
+            background: #42A5F5;
+            border-radius: 2px;
+        }
+
+        .output-file::after {
+            content: '🔒';
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 16px;
+        }
+
+        @keyframes outputAppear {
+            0%, 70% { opacity: 0; transform: scale(0.5); }
+            80% { opacity: 1; transform: scale(1.1); }
+            90%, 100% { opacity: 1; transform: scale(1); }
         }
 
         .tabs {
@@ -557,9 +735,34 @@
     <!-- LOADING OVERLAY -->
     <div id="loading-overlay" class="loading-overlay">
         <div class="loading-content">
-            <div class="spinner"></div>
-            <h3>Processing...</h3>
-            <p>Please wait while we hide/reveal your data securely.</p>
+            <div class="loading-animation">
+                <!-- File stacking animation -->
+                <div class="file-stack">
+                    <div class="file-icon"></div>
+                    <div class="file-icon"></div>
+                    <div class="file-icon"></div>
+                </div>
+                
+                <!-- Compression gears -->
+                <div class="compression-gear">
+                    <div class="gear"></div>
+                    <div class="gear"></div>
+                </div>
+                
+                <!-- Math calculations display -->
+                <div class="math-display">
+                    <div class="math-line">📊 Compressing...</div>
+                    <div class="math-line">🔐 AES-GCM 256-bit</div>
+                    <div class="math-line">📈 85% size reduction</div>
+                    <div class="math-line">✅ LSB embedding</div>
+                </div>
+                
+                <!-- Output file -->
+                <div class="output-file"></div>
+            </div>
+            <h3>Processing Your Data</h3>
+            <p>Compressing → Encrypting → Embedding</p>
+            <p style="font-size: 12px; opacity: 0.7; margin-top: 10px;">This may take a few moments for large files...</p>
         </div>
     </div>
 
