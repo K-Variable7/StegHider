@@ -101,6 +101,14 @@ def embed():
         else:
             return "Encryption selected but no password or public key provided", 400
 
+    # Determine level based on encryption method
+    if password:
+        level = "advanced"
+    elif pub_key_path:
+        level = "premium"
+    else:
+        level = "basic"
+
     # Call the logic
     try:
         result = hide_message(
