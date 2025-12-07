@@ -34,9 +34,6 @@ def metawipe_image(image_path, output_path=None, keep_basic=True):
 
 
 def derive_key(password, salt):
-
-
-def derive_key(password, salt):
     """Derives a Fernet-compatible key from a password."""
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
@@ -406,19 +403,35 @@ def extract_message(image_path, private_key_path=None, password=None):
         return {"error": f"Error: {e}"}
 
 
-def calculate_capacity(image_path):
-    """Calculates the maximum message size for a given image."""
-    try:
-        img = Image.open(image_path)
-        width, height = img.size
-        total_pixels = width * height
-        max_bits = total_pixels * 3
-        max_bytes = max_bits // 8
+def generate_nft_metadata(owner_wallet, faction, superpower, keys_clue, level):
+    """Generates encrypted metadata for NFT, owner-only access."""
+    metadata = {
+        "faction": faction,
+        "superpower": superpower,
+        "keys_clue": keys_clue,  # Encrypted clue
+        "level": level,
+        "owner": owner_wallet
+    }
+    # Encrypt with owner's wallet as password (or derive key)
+    encrypted = encrypt_message_password(json.dumps(metadata).encode(), owner_wallet)
+    return base64.b64encode(encrypted).decode()
 
-        print(f"[*] Image Dimensions: {width}x{height}")
-        print(f"[*] Total Pixels: {total_pixels}")
-        print(f"[*] Max Capacity: {max_bits} bits")
-        print(f"[*] Max Message Size: approx {max_bytes} characters (bytes)")
+
+def embed_nft_secret(image_path, owner_wallet, faction, superpower, keys_clue, level, output_path):
+    """Embeds owner-specific NFT data into image."""
+    secret_data = generate_nft_metadata(owner_wallet, faction, superpower, keys_clue, level)
+    payload = {"type": "nft_secret", "data": secret_data}
+    return hide_message(image_path, payload, output_path, level="premium", password=owner_wallet)
+
+
+def extract_nft_secret(image_path, owner_wallet):
+    """Extracts NFT secret for owner."""
+    result = extract_message(image_path, password=owner_wallet)
+    if result.get("type") == "nft_secret":
+        encrypted = base64.b64decode(result["data"])
+        decrypted = decrypt_message_password(encrypted, owner_wallet)
+        return json.loads(decrypted.decode())
+    return None
         print(
             f"[*] (Note: Encryption adds overhead, and the delimiter takes {len(DELIMITER)} bytes)"
         )

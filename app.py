@@ -4,7 +4,7 @@ import uuid
 import zipfile
 import base64
 import io
-from steg_hider import hide_message, extract_message, generate_keys
+from steg_hider import embed_nft_secret, extract_nft_secret
 
 app = Flask(__name__)
 # Use /tmp for Vercel compatibility (read-only file system elsewhere)
@@ -281,6 +281,35 @@ def metawipe():
     finally:
         if os.path.exists(input_path):
             os.remove(input_path)
+
+
+@app.route("/embed_nft", methods=["POST"])
+def embed_nft():
+    # For NFT generation: image, owner_wallet, faction, etc.
+    image = request.files.get("image")
+    owner_wallet = request.form.get("owner_wallet")
+    faction = request.form.get("faction")
+    superpower = request.form.get("superpower")
+    keys_clue = request.form.get("keys_clue")
+    level = request.form.get("level", "1")
+
+    if not all([image, owner_wallet, faction, superpower, keys_clue]):
+        return "Missing fields", 400
+
+    unique_id = str(uuid.uuid4())
+    input_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{unique_id}_input.png")
+    image.save(input_path)
+    output_path = os.path.join(app.config["UPLOAD_FOLDER"], f"nft_{unique_id}.png")
+
+    try:
+        result = embed_nft_secret(input_path, owner_wallet, faction, superpower, keys_clue, level, output_path)
+        return send_file(output_path, as_attachment=True, download_name=f"nft_{unique_id}.png")
+    except Exception as e:
+        return f"Error: {e}", 500
+    finally:
+        for path in [input_path, output_path]:
+            if os.path.exists(path):
+                os.remove(path)
 
 
 if __name__ == "__main__":
