@@ -6,20 +6,20 @@ StegHider is a powerful, privacy-focused web application that allows you to hide
 
 ## 🚀 Features
 
-*   **📸 Image Steganography**: Hides data within the pixels of an image without noticeably altering its appearance.
+*   **📸 Image Steganography**: Hides data within the pixels of an image without noticeably altering its appearance using Least Significant Bit (LSB) technique
 *   **🔐 Military-Grade Encryption**:
-    *   **Password Protection**: Encrypts data using AES (Fernet) with a key derived from your password (PBKDF2-HMAC-SHA256).
-    *   **RSA Key Support**: Use Public/Private key pairs (2048-bit) for asymmetric encryption. Share your Public Key so others can send you secrets only YOU can read.
-*   **📂 File Embedding**: Hide not just text, but **any file type** (PDFs, Docs, Images, etc.) inside a cover image.
-*   **📦 Smart Compression**: Automatically compresses data using `zlib` and zips files to maximize storage capacity within the image.
+    *   **Password Protection**: Encrypts data using AES-GCM (256-bit) with key derived from password using PBKDF2-HMAC-SHA256 (100,000 iterations)
+    *   **RSA Key Support**: Use Public/Private key pairs (2048-bit RSA) for asymmetric encryption. Share your Public Key so others can send you secrets only YOU can read
+*   **📂 File Embedding**: Hide not just text, but **any file type** (PDFs, Docs, Images, etc.) inside a cover image
+*   **📦 Smart Compression**: Automatically compresses data using `zlib` and zips files to maximize storage capacity within the image
 *   **🛡️ Robustness Features**:
-    *   **Reed-Solomon Error Correction**: Recover hidden data even if the image is corrupted (JPEG compression, resizing, etc.)
+    *   **Reed-Solomon Error Correction**: Recover hidden data even if the image is corrupted (JPEG compression, resizing, etc.) using configurable parity symbols
     *   **Auto-Tuning**: Automatically calculates optimal parity symbols based on expected corruption levels
     *   **Corruption Simulations**: Test your steganographic images against LSB flips, zero regions, JPEG recompression, and resize operations
 *   **🕵️ Privacy Tools**: MetaWipe feature removes EXIF metadata from images for enhanced privacy
 *   **🎮 Gamification**: Earn points for different security levels and features used
-*   **📱 Mobile Ready (PWA)**: Installable as a native app on iOS and Android devices.
-*   **🌑 Modern UI**: Sleek Dark Mode interface with Drag & Drop support.
+*   **📱 Mobile Ready (PWA)**: Installable as a native app on iOS and Android devices
+*   **🌑 Modern UI**: Sleek Dark Mode interface with Drag & Drop support
 
 ## 🛠️ Installation & Local Run
 
@@ -120,9 +120,33 @@ This project is configured for easy deployment on **Vercel**.
 *   **Python 3.12**
 *   **Flask**: Web Framework
 *   **Pillow (PIL)**: Image Processing
-*   **Cryptography**: AES & RSA Encryption
+*   **Cryptography**: AES-GCM & RSA Encryption
 *   **reedsolo**: Reed-Solomon Error Correction
 *   **HTML5/CSS3/JS**: Frontend
+
+## 🔬 Technical Details
+
+### Steganography Method
+- **LSB (Least Significant Bit)**: Modifies the least significant bits of pixel values
+- **Capacity**: Approximately 1MB of data per 4K image (depends on image size and color depth)
+- **Visual Impact**: Virtually undetectable to the human eye
+
+### Encryption Details
+- **Symmetric**: AES-GCM with 256-bit keys, 96-bit IV, 128-bit authentication tag
+- **Key Derivation**: PBKDF2 with HMAC-SHA256, 100,000 iterations, 256-bit output
+- **Asymmetric**: RSA-OAEP with 2048-bit keys for key exchange
+- **Hybrid Approach**: AES for bulk encryption, RSA for key wrapping
+
+### Error Correction
+- **Reed-Solomon**: Configurable parity symbols (default: 10)
+- **Recovery**: Can recover from up to 50% data loss depending on configuration
+- **Auto-tuning**: Calculates optimal parity based on expected corruption percentage
+
+### Privacy & Security
+- **Zero Server Storage**: All processing happens client-side
+- **Metadata Removal**: EXIF stripping prevents accidental data leaks
+- **No Tracking**: No analytics or user data collection (optional email for profiles)
+- **Open Source Core**: Steganography and crypto algorithms available for audit
 
 ## ⚠️ Disclaimer
 
