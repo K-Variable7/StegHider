@@ -1,8 +1,80 @@
-# StegHider - Secure Image Steganography
+# StegHider Monorepo
 
-StegHider is a powerful, privacy-focused web application that allows you to hide secret text messages and files inside ordinary images. It combines Least Significant Bit (LSB) steganography with military-grade encryption and advanced robustness features to ensure your data remains undetectable and secure even under corruption.
+This monorepo contains two main projects:
 
-![StegHider UI](static/images/icon-512.png)
+## 🛡️ StegHider - Secure Image Steganography
+
+A powerful, privacy-focused web application and browser extension for hiding secret messages in images using LSB steganography, encryption, and robustness features.
+
+### Structure
+```
+steghider/
+├── core/          # Core Python library (steg_hider.py)
+├── web/           # Flask web app (deployed on Vercel)
+└── extension/     # Browser extension for metadata wiping and stego operations
+```
+
+### Features
+*   **📸 Image Steganography**: LSB technique for hiding data in pixels
+*   **🔐 Military-Grade Encryption**: AES-GCM + RSA support
+*   **📂 File Embedding**: Hide any file type in images
+*   **🛡️ Robustness**: Reed-Solomon error correction
+*   **🕵️ Privacy Tools**: EXIF metadata removal
+*   **📱 PWA**: Installable on mobile devices
+
+## 🎮 VaultWars - Blockchain Scavenger Hunt Game
+
+A competitive NFT-based scavenger hunt where players discover hidden clues in steganographic images, competing in factions for rewards.
+
+### Structure
+```
+vaultwars/
+├── contracts/     # Solidity smart contracts (ERC-721 NFTs, reward pots)
+├── frontend/      # Next.js game dashboard with faction chat
+├── scripts/       # Automation for clue generation and IPFS uploads
+├── oracle-keeper/ # Chainlink oracle service
+└── extension-bridge/ # Overlay for StegHider extension integration
+```
+
+### Features
+*   **🏆 NFT Rewards**: Clue images minted as NFTs
+*   **🎯 Faction Competition**: Team-based gameplay with multipliers
+*   **🔗 Chainlink Integration**: Randomness and automation
+*   **💬 Social Features**: Nostr/XMTP faction communication
+*   **🌐 Decentralized**: IPFS storage for images
+
+## 🚀 Getting Started
+
+### StegHider Web App
+```bash
+cd steghider/web
+pip install -r requirements.txt
+python app.py
+```
+
+### StegHider Core Library
+```bash
+cd steghider/core
+pip install -e .
+```
+
+### VaultWars Contracts
+```bash
+cd vaultwars/contracts
+npm install
+npx hardhat compile
+```
+
+## 📦 Shared Resources
+
+The `shared/` folder contains common types, constants, and utilities used across both projects.
+
+## 🤝 Contributing
+
+- **StegHider**: Focus on privacy and steganography improvements
+- **VaultWars**: Game mechanics, blockchain integration, UI/UX
+
+Keep the projects separate to maintain StegHider's privacy focus while allowing VaultWars to evolve rapidly.
 
 ## 🚀 Features
 

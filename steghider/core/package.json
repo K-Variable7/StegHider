@@ -1,0 +1,18 @@
+{
+  "name": "steghider-core",
+  "version": "1.0.0",
+  "description": "Core steganography and encryption library for StegHider",
+  "main": "steg_hider.py",
+  "scripts": {
+    "test": "python -m pytest",
+    "build": "python setup.py sdist bdist_wheel"
+  },
+  "keywords": ["steganography", "encryption", "privacy"],
+  "author": "StegHider Team",
+  "license": "MIT",
+  "dependencies": {
+    "pillow": "^10.0.0",
+    "cryptography": "^41.0.0",
+    "reedsolo": "^1.7.0"
+  }
+}

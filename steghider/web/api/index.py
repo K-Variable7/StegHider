@@ -5,9 +5,9 @@ import zipfile
 import base64
 import io
 import qrcode
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'core'))
 from steg_hider import (
-    embed_nft_secret,
-    extract_nft_secret,
     hide_message,
     extract_message,
     metawipe_image,
