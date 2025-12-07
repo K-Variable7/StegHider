@@ -103,9 +103,15 @@ def embed():
 
     # Determine level based on encryption method
     if password:
-        level = "advanced"
+        if request.form.get("license_key") == "premium123":  # Simple license check
+            level = "advanced"
+        else:
+            level = "basic"  # Restrict to basic if not licensed
     elif pub_key_path:
-        level = "premium"
+        if request.form.get("license_key") == "premium123":
+            level = "premium"
+        else:
+            level = "basic"
     else:
         level = "basic"
 
