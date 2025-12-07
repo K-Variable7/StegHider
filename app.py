@@ -33,6 +33,7 @@ def embed():
 
     use_encryption = "use_encryption" in request.form
     password = request.form.get("password", "").strip()
+    level = request.form.get("level", "basic")  # basic, advanced, premium
 
     if image.filename == "":
         return "No selected file", 400
@@ -89,7 +90,8 @@ def embed():
 
     # Call the logic
     try:
-        hide_message(input_path, payload, output_path, pub_key_path, password)
+        result = hide_message(input_path, payload, output_path, pub_key_path, password, level)
+        score = result.get("score", 0)
     except Exception as e:
         return f"Error embedding message: {str(e)}", 500
 
@@ -250,6 +252,35 @@ def generate_keys_route():
     os.remove(pub_path)
 
     return send_file(zip_path, as_attachment=True, download_name="steg_keys.zip")
+
+
+@app.route("/metawipe", methods=["POST"])
+def metawipe():
+    if "image" not in request.files:
+        return "No image uploaded", 400
+
+    image = request.files["image"]
+    if image.filename == "":
+        return "No selected file", 400
+
+    # Save input image
+    ext = os.path.splitext(image.filename)[1]
+    unique_id = str(uuid.uuid4())
+    input_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{unique_id}_input{ext}")
+    image.save(input_path)
+
+    output_filename = f"clean_{unique_id}{ext}"
+    output_path = os.path.join(app.config["UPLOAD_FOLDER"], output_filename)
+
+    try:
+        from steg_hider import metawipe_image
+        clean_path = metawipe_image(input_path, output_path)
+        return send_file(clean_path, as_attachment=True, download_name=output_filename)
+    except Exception as e:
+        return f"Error cleaning metadata: {str(e)}", 500
+    finally:
+        if os.path.exists(input_path):
+            os.remove(input_path)
 
 
 if __name__ == "__main__":

@@ -246,6 +246,7 @@
         <div class="tabs">
             <div class="tab active" onclick="openTab('embed')">Hide</div>
             <div class="tab" onclick="openTab('extract')">Reveal</div>
+            <div class="tab" onclick="openTab('metawipe')">Clean Metadata</div>
         </div>
 
         <!-- EMBED SECTION -->
@@ -295,6 +296,15 @@
                         <label>Upload Public Key (.pem)</label>
                         <input type="file" name="public_key" accept=".pem">
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Security Level</label>
+                    <select name="level">
+                        <option value="basic">Basic (Free) - No encryption</option>
+                        <option value="advanced">Advanced (Paid) - Password encryption</option>
+                        <option value="premium">Premium (Paid) - RSA encryption</option>
+                    </select>
                 </div>
 
                 <br>
@@ -360,6 +370,27 @@
             {% endif %}
         </div>
 
+        <!-- METAWIPE SECTION -->
+        <div id="metawipe" class="content">
+            <form action="/metawipe" method="post" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Select Image to Clean</label>
+                    <div class="file-upload">
+                        <label for="image_metawipe" class="file-upload-label" id="label_metawipe">
+                            <span>Click, Drag, or Take Photo</span>
+                            <img id="preview_metawipe" class="preview">
+                        </label>
+                        <input type="file" name="image" id="image_metawipe" accept="image/*" required onchange="handleFileSelect('image_metawipe', 'label_metawipe', 'preview_metawipe')">
+                    </div>
+                </div>
+                <br>
+                <button type="submit">Clean & Download</button>
+            </form>
+            <div style="margin-top: 15px; font-size: 14px; color: #888;">
+                Removes EXIF metadata for privacy before posting on social media.
+            </div>
+        </div>
+
         <div class="footer">
             Secure & Private. No data is stored on the server.
             <br>
@@ -392,6 +423,7 @@
             // Simple hack: index 0 is embed, index 1 is extract
             if(tabName === 'embed') tabs[0].classList.add("active");
             if(tabName === 'extract') tabs[1].classList.add("active");
+            if(tabName === 'metawipe') tabs[2].classList.add("active");
         }
 
         function handleFileSelect(inputId, labelId, previewId) {
