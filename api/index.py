@@ -5,9 +5,15 @@ import zipfile
 import base64
 import io
 import qrcode
-from steg_hider import embed_nft_secret, extract_nft_secret
+from steg_hider import (
+    embed_nft_secret,
+    extract_nft_secret,
+    hide_message,
+    extract_message,
+    metawipe_image,
+)
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder="../templates", static_folder="../static")
 # Use /tmp for Vercel compatibility (read-only file system elsewhere)
 UPLOAD_FOLDER = "/tmp"
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
@@ -169,9 +175,15 @@ def extract():
             return "Encryption selected but no password or private key provided", 400
 
     # Call the logic
-    extracted_data = extract_message(
-        input_path, priv_key_path, password, enable_rs=enable_rs, nsym=nsym
-    )
+    try:
+        extracted_data = extract_message(
+            input_path, priv_key_path, password, enable_rs=enable_rs, nsym=nsym
+        )
+    except Exception as e:
+        return (
+            f"Extraction failed: {str(e)}. Check your password/key and ensure the image contains hidden data.",
+            400,
+        )
 
     # Cleanup
     try:
@@ -297,8 +309,6 @@ def metawipe():
     output_path = os.path.join(app.config["UPLOAD_FOLDER"], output_filename)
 
     try:
-        from steg_hider import metawipe_image
-
         clean_path = metawipe_image(input_path, output_path)
         return send_file(clean_path, as_attachment=True, download_name=output_filename)
     except Exception as e:
@@ -361,7 +371,3 @@ def generate_qr(data):
     buf.seek(0)
 
     return send_file(buf, mimetype="image/png")
-
-
-if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)

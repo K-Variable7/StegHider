@@ -302,9 +302,27 @@
                     <label>Security Level</label>
                     <select name="level">
                         <option value="basic">Basic (Free) - No encryption</option>
-                        <option value="advanced">Advanced (Paid) - Password encryption</option>
+                        <option value="advanced">Advanced - Password encryption</option>
                         <option value="premium">Premium (Paid) - RSA encryption</option>
                     </select>
+                </div>
+
+                <div class="form-group">
+                    <label><input type="checkbox" name="enable_rs" value="yes"> Enable Reed-Solomon Error Correction (Robustness)</label>
+                </div>
+
+                <div class="form-group">
+                    <label>Parity Symbols (nsym)</label>
+                    <input type="number" name="nsym" value="10" min="1" max="255">
+                </div>
+
+                <div class="form-group">
+                    <label><input type="checkbox" name="auto_tune" value="yes"> Auto-tune nsym based on expected corruption</label>
+                </div>
+
+                <div class="form-group">
+                    <label>Expected Corruption (%)</label>
+                    <input type="number" name="expected_corruption" value="5" min="0" max="100">
                 </div>
 
                 <br>
@@ -329,6 +347,15 @@
                 <div class="form-group">
                     <label>Decryption Password (If encrypted)</label>
                     <input type="password" name="password" placeholder="Enter password to unlock">
+                </div>
+
+                <div class="form-group">
+                    <label><input type="checkbox" name="enable_rs" value="yes"> Reed-Solomon was used (for robustness)</label>
+                </div>
+
+                <div class="form-group">
+                    <label>Parity Symbols (nsym)</label>
+                    <input type="number" name="nsym" value="10" min="1" max="255">
                 </div>
 
                 <div class="toggle-advanced" onclick="toggleAdvanced('extract_advanced')">Advanced Options (RSA Keys)</div>
