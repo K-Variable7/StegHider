@@ -45,7 +45,7 @@ def generate_clue(chain_index, total_clues, theme="vault"):
 
     return clue
 
-def create_hunt_chain(num_clues, base_images_dir, output_dir, password=None, public_key=None, theme="vault"):
+def create_hunt_chain(num_clues, base_images_dir, output_dir, password=None, public_key=None, theme="vault", players=20, factions=4, difficulty_start=1):
     """Create a chain of clue images."""
 
     # Get list of base images
@@ -132,7 +132,9 @@ if __name__ == "__main__":
     parser.add_argument("--output", default="hunt_clues", help="Output directory for clues")
     parser.add_argument("--password", help="Password for encryption (advanced level)")
     parser.add_argument("--public_key", help="Path to RSA public key (premium level)")
-    parser.add_argument("--theme", default="vault", help="Theme for clues (vault, treasure, etc.)")
+    parser.add_argument("--players", type=int, default=20, help="Number of players for the hunt")
+    parser.add_argument("--factions", type=int, default=4, help="Number of factions")
+    parser.add_argument("--difficulty-start", type=int, default=1, help="Starting difficulty level")
 
     args = parser.parse_args()
 
@@ -142,5 +144,8 @@ if __name__ == "__main__":
         output_dir=args.output,
         password=args.password,
         public_key=args.public_key,
-        theme=args.theme
+        theme=args.theme,
+        players=args.players,
+        factions=args.factions,
+        difficulty_start=args.difficulty_start
     )

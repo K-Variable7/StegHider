@@ -1,0 +1,31 @@
+{
+  "name": "vaultwars-frontend",
+  "version": "1.0.0",
+  "description": "Frontend dashboard for VaultWars scavenger hunt game",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@rainbow-me/rainbowkit": "^2.2.10",
+    "@tailwindcss/typography": "^0.5.19",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.7",
+    "@xmtp/xmtp-js": "^13.0.4",
+    "ethers": "^6.16.0",
+    "next": "^16.0.7",
+    "react": "^19.2.1",
+    "react-confetti": "^6.4.0",
+    "react-dom": "^19.2.1",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3",
+    "viem": "^2.41.2",
+    "wagmi": "^3.1.0"
+  }
+}
