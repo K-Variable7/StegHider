@@ -85,7 +85,10 @@ def embed():
                 app.config["UPLOAD_FOLDER"], f"{unique_id}_pub.pem"
             )
             pub_key.save(pub_key_path)
-        elif "public_key_text" in request.form and request.form["public_key_text"].strip() != "":
+        elif (
+            "public_key_text" in request.form
+            and request.form["public_key_text"].strip() != ""
+        ):
             pub_key_path = os.path.join(
                 app.config["UPLOAD_FOLDER"], f"{unique_id}_pub.pem"
             )
@@ -148,7 +151,10 @@ def extract():
                 app.config["UPLOAD_FOLDER"], f"{unique_id}_priv.pem"
             )
             priv_key.save(priv_key_path)
-        elif "private_key_text" in request.form and request.form["private_key_text"].strip() != "":
+        elif (
+            "private_key_text" in request.form
+            and request.form["private_key_text"].strip() != ""
+        ):
             priv_key_path = os.path.join(
                 app.config["UPLOAD_FOLDER"], f"{unique_id}_priv.pem"
             )

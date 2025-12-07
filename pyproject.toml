@@ -1,0 +1,10 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "steg-hider"
+version = "0.0.1"
+description = "StegHider: image steganography helpers and CLI"
+authors = [ { name = "K-Variable7" } ]
+license = { text = "MIT" }
