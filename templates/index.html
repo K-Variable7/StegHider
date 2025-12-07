@@ -926,7 +926,43 @@
             loadProfile();
             // Hide loading overlay in case it persisted
             document.getElementById('loading-overlay').style.display = 'none';
+            
+            // Clear form inputs after successful processing
+            {% if extracted_text or download_link or error %}
+                clearFormInputs();
+            {% endif %}
         };
+
+        function clearFormInputs() {
+            // Clear embed form
+            document.getElementById('secret_file').value = '';
+            document.getElementsByName('message')[0].value = '';
+            document.getElementsByName('password')[0].value = '';
+            document.getElementsByName('license_key')[0].value = '';
+            document.getElementById('label_secret_file').querySelector('span').innerText = 'Click or Drag File Here';
+            document.getElementById('label_secret_file').style.borderColor = '';
+            document.getElementById('label_secret_file').style.color = '';
+            
+            // Clear extract form
+            document.getElementById('image_extract').value = '';
+            document.getElementsByName('password')[1].value = '';
+            document.getElementById('label_extract').querySelector('span').innerText = 'Click or Drag Image Here';
+            document.getElementById('label_extract').style.borderColor = '';
+            document.getElementById('label_extract').style.color = '';
+            
+            // Clear metawipe form
+            document.getElementById('image_metawipe').value = '';
+            document.getElementById('label_metawipe').querySelector('span').innerText = 'Click, Drag, or Take Photo';
+            document.getElementById('label_metawipe').style.borderColor = '';
+            document.getElementById('label_metawipe').style.color = '';
+            
+            // Clear any preview images
+            var previews = document.querySelectorAll('.preview');
+            previews.forEach(function(preview) {
+                preview.style.display = 'none';
+                preview.src = '';
+            });
+        }
 
         // Show loading overlay on form submit
         document.addEventListener('DOMContentLoaded', function() {
