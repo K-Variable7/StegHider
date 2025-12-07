@@ -11,7 +11,7 @@ StegHider is a powerful, privacy-focused web application that allows you to hide
     *   **Password Protection**: Encrypts data using AES-GCM (256-bit) with key derived from password using PBKDF2-HMAC-SHA256 (100,000 iterations)
     *   **RSA Key Support**: Use Public/Private key pairs (2048-bit RSA) for asymmetric encryption. Share your Public Key so others can send you secrets only YOU can read
 *   **📂 File Embedding**: Hide not just text, but **any file type** (PDFs, Docs, Images, etc.) inside a cover image
-*   **📦 Smart Compression**: Automatically compresses data using `zlib` and zips files to maximize storage capacity within the image
+*   **📦 Smart Compression**: Automatically compresses data using `zlib` (level 9, maximum compression) and zips files to maximize storage capacity within the image.
 *   **🛡️ Robustness Features**:
     *   **Reed-Solomon Error Correction**: Recover hidden data even if the image is corrupted (JPEG compression, resizing, etc.) using configurable parity symbols
     *   **Auto-Tuning**: Automatically calculates optimal parity symbols based on expected corruption levels
@@ -141,6 +141,11 @@ This project is configured for easy deployment on **Vercel**.
 - **Reed-Solomon**: Configurable parity symbols (default: 10)
 - **Recovery**: Can recover from up to 50% data loss depending on configuration
 - **Auto-tuning**: Calculates optimal parity based on expected corruption percentage
+
+### Compression
+- **Algorithm**: zlib with maximum compression (level 9)
+- **File Handling**: Automatic ZIP compression for uploaded files
+- **Efficiency**: Up to 90% size reduction for text, varies for binary files
 
 ### Privacy & Security
 - **Zero Server Storage**: All processing happens client-side

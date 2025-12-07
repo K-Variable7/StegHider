@@ -373,7 +373,7 @@ def hide_message(
         # Compress the payload
         logging.info("Compressing data...")
         payload_bytes = payload_str.encode("utf-8")
-        compressed_data = zlib.compress(payload_bytes)
+        compressed_data = zlib.compress(payload_bytes, level=9)
 
         if level == "advanced":
             logging.info("Encrypting message with password (advanced)...")

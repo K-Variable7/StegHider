@@ -721,6 +721,8 @@
         // Load profile on page load
         window.onload = function() {
             loadProfile();
+            // Hide loading overlay in case it persisted
+            document.getElementById('loading-overlay').style.display = 'none';
         };
 
         // Show loading overlay on form submit
@@ -729,6 +731,10 @@
             forms.forEach(function(form) {
                 form.addEventListener('submit', function() {
                     document.getElementById('loading-overlay').style.display = 'flex';
+                    // Auto-hide after 30 seconds as fallback
+                    setTimeout(function() {
+                        document.getElementById('loading-overlay').style.display = 'none';
+                    }, 30000);
                 });
             });
         });
