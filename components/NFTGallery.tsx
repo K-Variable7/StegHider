@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAccount, useReadContract } from 'wagmi';
 import { DYNAMIC_CLUE_NFT_ABI } from '../utils/dynamicClueNftAbi';
 
-const CONTRACT_ADDRESS = "0x98134BFEeB202ef102245A9f20c48e39238117a6"; // DynamicClueNFT on Base Sepolia
+const CONTRACT_ADDRESS = "0x7fE9313c7e65A0c8Db47F9Fbb825Bab10bbbd1f4"; // DynamicClueNFT on Base Sepolia
 
 const FACTIONS = [
   { id: 0, name: 'Red', color: '#DC143C', bgColor: 'bg-red-500' },

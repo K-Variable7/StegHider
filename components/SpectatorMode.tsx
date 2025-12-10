@@ -7,7 +7,7 @@ import { Relay, Event } from 'nostr-tools';
 import { PRODUCTION_RELAYS, VAULTWARS_EVENTS } from '../utils/nostrEcosystem';
 import { useZapManager } from '../utils/nostrEcosystem';
 
-const CONTRACT_ADDRESS = "0x98134BFEeB202ef102245A9f20c48e39238117a6";
+const CONTRACT_ADDRESS = "0x7fE9313c7e65A0c8Db47F9Fbb825Bab10bbbd1f4";
 
 interface SpectatorEvent {
   type: 'reveal' | 'steal' | 'evolution' | 'mint';

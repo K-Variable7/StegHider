@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useReadContract } from 'wagmi';
 import { DYNAMIC_CLUE_NFT_ABI } from '../utils/dynamicClueNftAbi';
 
-const CONTRACT_ADDRESS = "0x98134BFEeB202ef102245A9f20c48e39238117a6";
+const CONTRACT_ADDRESS = "0x7fE9313c7e65A0c8Db47F9Fbb825Bab10bbbd1f4";
 
 interface AnalyticsData {
   totalReveals: number;

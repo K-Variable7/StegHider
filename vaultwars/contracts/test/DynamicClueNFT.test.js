@@ -15,10 +15,11 @@ describe("DynamicClueNFT", function () {
   it("Should mint a dynamic NFT and return gateway URL", async function () {
     const tx = await dynamicClueNFT.connect(owner).mintClue(
       player1.address,
-      0,
-      5,
+      0, // faction
+      0, // tier (Basic)
+      5, // difficulty
       ethers.keccak256(ethers.toUtf8Bytes("test clue")),
-      { value: ethers.parseEther("0.01") }
+      { value: ethers.parseEther("0.001") } // Basic tier price
     );
     await tx.wait();
 
@@ -29,10 +30,11 @@ describe("DynamicClueNFT", function () {
   it("Should evolve NFT when experience is gained", async function () {
     await dynamicClueNFT.connect(owner).mintClue(
       player1.address,
-      0,
-      5,
+      0, // faction
+      0, // Basic tier
+      5, // difficulty
       ethers.keccak256(ethers.toUtf8Bytes("test clue")),
-      { value: ethers.parseEther("0.01") }
+      { value: ethers.parseEther("0.001") }
     );
 
     await dynamicClueNFT.connect(owner).addExperience(0, 150, "test");
@@ -43,10 +45,11 @@ describe("DynamicClueNFT", function () {
   it("Should generate faction perks data", async function () {
     await dynamicClueNFT.connect(owner).mintClue(
       player1.address,
-      0,
-      5,
+      0, // faction
+      0, // Basic tier
+      5, // difficulty
       ethers.keccak256(ethers.toUtf8Bytes("test clue")),
-      { value: ethers.parseEther("0.01") }
+      { value: ethers.parseEther("0.001") }
     );
 
     const jsonData = await dynamicClueNFT.generateSVG(0);
@@ -58,18 +61,20 @@ describe("DynamicClueNFT", function () {
     await dynamicClueNFT.connect(owner).mintClue(
       player1.address,
       0, // Red faction
-      5,
+      0, // Basic tier
+      5, // difficulty
       ethers.keccak256(ethers.toUtf8Bytes("red faction test")),
-      { value: ethers.parseEther("0.01") }
+      { value: ethers.parseEther("0.001") }
     );
 
     // Mint NFT for Blue faction  
     await dynamicClueNFT.connect(owner).mintClue(
       player2.address,
       1, // Blue faction
-      5,
+      1, // Rare tier
+      5, // difficulty
       ethers.keccak256(ethers.toUtf8Bytes("blue faction test")),
-      { value: ethers.parseEther("0.01") }
+      { value: ethers.parseEther("0.005") }
     );
 
     // Test that Red faction gets discount by checking actual transaction cost

@@ -177,9 +177,7 @@ export default function StegHideEmbed({ clueText, onImageGenerated }: StegHideEm
       <div className="text-center">
         <p className="text-gray-400 text-sm mb-2">For full functionality:</p>
         <a
-          href="https://steghide.vercel.app"
-          target="_blank"
-          rel="noopener noreferrer"
+          href="/tool"
           className="inline-block px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-500 hover:to-blue-500 transition-all duration-300 text-sm font-semibold"
         >
           🌐 Open Full StegHide Tool

@@ -32,6 +32,13 @@ contract DynamicClueNFT is ERC721, ERC721URIStorage, VRFConsumerBaseV2, Ownable,
         Gold
     }
 
+    // Tier enum for pricing
+    enum Tier {
+        Basic, // 0.001 ETH - Common clues
+        Rare, // 0.005 ETH - Rare clues with better rewards
+        Epic // 0.01 ETH - Epic clues with highest rewards
+    }
+
     enum RequestType {
         Solve,
         Steal,
@@ -49,6 +56,7 @@ contract DynamicClueNFT is ERC721, ERC721URIStorage, VRFConsumerBaseV2, Ownable,
     struct Clue {
         uint256 tokenId;
         Faction faction;
+        Tier tier;
         uint256 difficulty;
         bytes32 clueHash;
         address creator;
@@ -77,12 +85,22 @@ contract DynamicClueNFT is ERC721, ERC721URIStorage, VRFConsumerBaseV2, Ownable,
 
     VRFRequest[] public vrfRequests;
 
-    uint256 public constant MINT_PRICE = 0.01 ether;
+    uint256 public constant MINT_PRICE_BASIC = 0.001 ether; // $2.50 - Accessible entry point
+    uint256 public constant MINT_PRICE_RARE = 0.005 ether; // $12.50 - Premium clues
+    uint256 public constant MINT_PRICE_EPIC = 0.01 ether; // $25 - Legendary clues
     uint256 public constant BASE_REVEAL_FEE = 0.001 ether;
     uint256 public constant BASE_BLOCK_FEE = 0.002 ether;
     uint256 public constant FACTION_DISCOUNT = 20; // 20% discount
 
-    event ClueMinted(uint256 indexed tokenId, address indexed creator, Faction faction, uint256 difficulty);
+    // Get mint price for a specific tier
+    function getMintPrice(Tier tier) public pure returns (uint256) {
+        if (tier == Tier.Basic) return MINT_PRICE_BASIC;
+        if (tier == Tier.Rare) return MINT_PRICE_RARE;
+        if (tier == Tier.Epic) return MINT_PRICE_EPIC;
+        revert("Invalid tier");
+    }
+
+    event ClueMinted(uint256 indexed tokenId, address indexed creator, Faction faction, Tier tier, uint256 difficulty);
     event ClueSolved(uint256 indexed tokenId, address indexed solver, uint256 points);
     event ClueStolen(
         uint256 indexed tokenId, address indexed stealer, address indexed victim, uint256 stolenMultiplier
@@ -221,10 +239,18 @@ contract DynamicClueNFT is ERC721, ERC721URIStorage, VRFConsumerBaseV2, Ownable,
         return baseFee;
     }
 
-    // Mint function
-    function mintClue(address to, uint256 faction, uint256 difficulty, bytes32 clueHash) public payable nonReentrant {
-        require(msg.value >= MINT_PRICE, "Insufficient mint price");
+    // Mint function with tiered pricing
+    function mintClue(address to, uint256 faction, uint256 tier, uint256 difficulty, bytes32 clueHash)
+        public
+        payable
+        nonReentrant
+    {
         require(faction <= 3, "Invalid faction");
+        require(tier <= 2, "Invalid tier");
+
+        Tier clueTier = Tier(tier);
+        uint256 requiredPrice = getMintPrice(clueTier);
+        require(msg.value >= requiredPrice, "Insufficient mint price");
 
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
@@ -234,6 +260,7 @@ contract DynamicClueNFT is ERC721, ERC721URIStorage, VRFConsumerBaseV2, Ownable,
         clues[tokenId] = Clue({
             tokenId: tokenId,
             faction: Faction(faction),
+            tier: clueTier,
             difficulty: difficulty,
             clueHash: clueHash,
             creator: to,
@@ -250,7 +277,12 @@ contract DynamicClueNFT is ERC721, ERC721URIStorage, VRFConsumerBaseV2, Ownable,
         playerFactions[to] = Faction(faction);
         playerClues[to].push(tokenId);
 
-        emit ClueMinted(tokenId, to, Faction(faction), difficulty);
+        emit ClueMinted(tokenId, to, Faction(faction), clueTier, difficulty);
+    }
+
+    // Backward compatibility - defaults to Basic tier
+    function mintClue(address to, uint256 faction, uint256 difficulty, bytes32 clueHash) public payable nonReentrant {
+        mintClue(to, faction, 0, difficulty, clueHash); // 0 = Basic tier
     }
 
     // Reveal functions
@@ -706,6 +738,7 @@ contract DynamicClueNFT is ERC721, ERC721URIStorage, VRFConsumerBaseV2, Ownable,
         clues[tokenId] = Clue({
             tokenId: tokenId,
             faction: Faction.Gold, // Special event faction
+            tier: Tier.Epic, // Special event tier
             difficulty: 5, // Higher difficulty for special NFTs
             clueHash: keccak256(abi.encodePacked("Special Event NFT", eventId, tokenId)),
             creator: address(this),
@@ -718,7 +751,7 @@ contract DynamicClueNFT is ERC721, ERC721URIStorage, VRFConsumerBaseV2, Ownable,
 
         playerClues[to].push(tokenId);
 
-        emit ClueMinted(tokenId, address(this), Faction.Gold, 5);
+        emit ClueMinted(tokenId, address(this), Faction.Gold, Tier.Epic, 5);
     }
 
     // Internal function to apply event multipliers

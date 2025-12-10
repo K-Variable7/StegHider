@@ -17,7 +17,7 @@ import { audioManager } from '../utils/audioUtils';
 import { AchievementParticles, MintParticles, RevealParticles, StealParticles } from './ParticleSystem';
 
 const CLUE_NFT_ABI = DYNAMIC_CLUE_NFT_ABI;
-const CONTRACT_ADDRESS = "0x98134BFEeB202ef102245A9f20c48e39238117a6";
+const CONTRACT_ADDRESS = "0x7fE9313c7e65A0c8Db47F9Fbb825Bab10bbbd1f4";
 
 const FACTIONS = [
   { id: 0, name: 'Red', color: 'bg-red-500', description: 'Aggressive hunters' },
@@ -26,9 +26,16 @@ const FACTIONS = [
   { id: 3, name: 'Gold', color: 'bg-yellow-500', description: 'Elite champions' }
 ];
 
+const TIERS = [
+  { id: 0, name: 'Basic', price: '0.001 ETH', color: 'bg-gray-500', description: 'Entry level clues' },
+  { id: 1, name: 'Rare', price: '0.005 ETH', color: 'bg-blue-500', description: 'Enhanced rewards' },
+  { id: 2, name: 'Epic', price: '0.01 ETH', color: 'bg-purple-500', description: 'Maximum rewards' }
+];
+
 export default function EnhancedFactionDashboard() {
   const { address, isConnected, connector } = useAccount();
   const [selectedFaction, setSelectedFaction] = useState<number | null>(null);
+  const [selectedTier, setSelectedTier] = useState<number>(0); // Default to Basic tier
   const [clues, setClues] = useState<number[]>([]);
   const [showConfetti, setShowConfetti] = useState(false);
   const [numReveals, setNumReveals] = useState(1);
@@ -272,7 +279,7 @@ export default function EnhancedFactionDashboard() {
   };
 
   const mintNFT = async () => {
-    if (!address || !selectedFaction || !clueText) {
+    if (!address || selectedFaction === null || !clueText) {
       console.error('Missing required data for minting:', { address, selectedFaction, clueText });
       return;
     }
@@ -280,6 +287,10 @@ export default function EnhancedFactionDashboard() {
     try {
       setIsProcessingStego(true);
       console.log('Starting NFT mint process...');
+      
+      // Get tier-based pricing
+      const tierPrices = ['1000000000000000', '5000000000000000', '10000000000000000']; // 0.001, 0.005, 0.01 ETH
+      const mintPrice = tierPrices[selectedTier];
       
       // Simulate steganography processing and create clue hash
       setTimeout(() => {
@@ -295,13 +306,13 @@ export default function EnhancedFactionDashboard() {
           address: CONTRACT_ADDRESS,
           abi: CLUE_NFT_ABI,
           functionName: 'mintClue',
-          args: [address, selectedFaction, 1, clueHash], // difficulty starts at 1
-          value: BigInt('10000000000000000'), // 0.01 ETH
+          args: [address, selectedFaction, selectedTier, 5, clueHash], // faction, tier, difficulty, clueHash
+          value: BigInt(mintPrice),
           chain: baseSepolia,
           account: address
         });
         setIsProcessingStego(false);
-        setSuccessMessage('NFT minted successfully! Now embed your clue in an image below!');
+        setSuccessMessage(`NFT minted successfully with ${TIERS[selectedTier].name} tier! Now embed your clue in an image below!`);
         setShowSuccessToast(true);
         setTimeout(() => setShowSuccessToast(false), 5000);
       }, 2000);
@@ -535,6 +546,154 @@ export default function EnhancedFactionDashboard() {
           )}
         </div>
 
+        {/* Tier Selection & Minting */}
+        <div className="bg-gradient-to-br from-black/80 to-gray-900/80 backdrop-blur-md rounded-2xl p-4 sm:p-6 lg:p-8 border border-purple-500/20 shadow-2xl">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4 sm:mb-6 text-center bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">
+            🏆 Choose Your Tier & Mint NFT
+          </h2>
+
+          {/* Tier Selection */}
+          <div className="mb-6 sm:mb-8">
+            <h3 className="text-xl font-bold text-white mb-4 text-center">Select Clue Tier</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              {TIERS.map((tier) => (
+                <button
+                  key={tier.id}
+                  onClick={() => setSelectedTier(tier.id)}
+                  className={`p-4 sm:p-6 rounded-xl text-white transition-all duration-300 transform hover:scale-105 border-2 text-sm sm:text-base ${
+                    selectedTier === tier.id
+                      ? `${tier.color} ring-4 ring-white/50 scale-105 shadow-2xl border-white/50`
+                      : `${tier.color} hover:shadow-2xl border-transparent hover:border-white/30`
+                  } backdrop-blur-sm`}
+                >
+                  <h3 className="font-bold text-lg sm:text-xl mb-2">{tier.name}</h3>
+                  <p className="text-yellow-300 font-bold text-lg mb-2">{tier.price}</p>
+                  <p className="text-xs sm:text-sm opacity-90">{tier.description}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Clue Input & Mint */}
+          <div className="space-y-4 sm:space-y-6">
+            <div>
+              <label className="block text-white text-sm sm:text-base font-semibold mb-2">
+                Enter Your Secret Clue
+              </label>
+              <textarea
+                value={clueText}
+                onChange={(e) => setClueText(e.target.value)}
+                placeholder="Enter the secret message you want to hide in your NFT..."
+                className="w-full h-24 sm:h-32 bg-gray-800/60 text-white rounded-xl px-4 py-3 border border-gray-600/50 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 resize-none backdrop-blur-sm"
+                maxLength={500}
+              />
+              <p className="text-gray-400 text-xs mt-1">
+                {clueText.length}/500 characters
+              </p>
+            </div>
+
+            {selectedFaction !== null && (
+              <div className="p-4 bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-xl">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-purple-300 font-semibold">Mint Summary:</span>
+                  <span className="text-yellow-400 font-bold">{TIERS[selectedTier].price}</span>
+                </div>
+                <p className="text-gray-300 text-sm">
+                  {FACTIONS[selectedFaction].name} Faction • {TIERS[selectedTier].name} Tier • Difficulty: 5
+                </p>
+              </div>
+            )}
+
+            <div className="text-center">
+              <button
+                onClick={mintNFT}
+                disabled={!selectedFaction || !clueText.trim() || isProcessingStego}
+                className="px-8 py-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-500 hover:to-purple-600 transition-all duration-300 transform hover:scale-105 shadow-2xl border border-purple-500/50 font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              >
+                {isProcessingStego ? '🪄 Minting NFT...' : `🪄 Mint ${TIERS[selectedTier].name} NFT`}
+              </button>
+              {(!selectedFaction || !clueText.trim()) && (
+                <p className="text-gray-400 text-sm mt-2">
+                  {!selectedFaction ? 'Select a faction' : 'Enter a clue'} to mint
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Steganography Integration */}
+        <div className="bg-gradient-to-br from-black/80 to-gray-900/80 backdrop-blur-md rounded-2xl p-4 sm:p-6 lg:p-8 border border-cyan-500/20 shadow-2xl">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white bg-gradient-to-r from-cyan-400 to-cyan-600 bg-clip-text text-transparent">
+              🎨 Hide Your Clue in Images
+            </h2>
+            <button
+              onClick={() => setShowStegHideSection(!showStegHideSection)}
+              className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-500 hover:to-blue-500 transition-all duration-300 text-sm font-semibold"
+            >
+              {showStegHideSection ? 'Hide Section' : 'Show Tools'}
+            </button>
+          </div>
+
+          {showStegHideSection && (
+            <div className="space-y-6">
+              <div className="p-4 bg-gradient-to-r from-blue-900/30 to-purple-900/30 border border-blue-500/30 rounded-lg">
+                <h3 className="text-blue-400 font-bold text-lg mb-2">🎭 Complete Workflow:</h3>
+                <ul className="text-gray-300 text-sm space-y-1">
+                  <li>• <strong>Step 1:</strong> Mint a clue NFT with your secret message (above)</li>
+                  <li>• <strong>Step 2:</strong> Embed your clue in an image using steganography (below)</li>
+                  <li>• <strong>Step 3:</strong> Share the image - other players hunt for your hidden clue!</li>
+                  <li>• <strong>Step 4:</strong> Defend your clues or steal from opponents</li>
+                </ul>
+              </div>
+
+              <StegHideEmbed 
+                clueText={clueText}
+                onImageGenerated={(imageData) => {
+                  setStegoImage(imageData);
+                  setSuccessMessage('Steganographic image created! Share it to start the hunt!');
+                  setShowSuccessToast(true);
+                  setTimeout(() => setShowSuccessToast(false), 5000);
+                }}
+              />
+              
+              {stegoImage && (
+                <div className="mt-6 p-4 bg-green-900/30 border border-green-500/30 rounded-lg">
+                  <h4 className="text-green-400 font-semibold mb-2">🎨 Steganographic Image Ready!</h4>
+                  <img 
+                    src={stegoImage} 
+                    alt="Steganographic image" 
+                    className="w-full max-h-64 rounded-lg border border-gray-600 mb-4" 
+                  />
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => {
+                        const link = document.createElement('a');
+                        link.href = stegoImage;
+                        link.download = 'hidden-clue.png';
+                        link.click();
+                      }}
+                      className="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-500 hover:to-emerald-500 transition-all duration-300 text-sm font-semibold"
+                    >
+                      💾 Download Image
+                    </button>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(window.location.origin + '/gallery')}
+                      className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-500 hover:to-cyan-500 transition-all duration-300 text-sm font-semibold"
+                    >
+                      🔗 Share Gallery Link
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="text-center text-gray-400 text-sm">
+                <p>💡 <strong>Pro Tip:</strong> High-quality PNG images work best for steganography. Share your creations in the gallery!</p>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Reveal Mechanisms */}
         <div className="bg-gradient-to-br from-black/80 to-gray-900/80 backdrop-blur-md rounded-2xl p-8 border border-red-500/20 shadow-2xl">
           <h2 className="text-3xl font-bold text-white mb-6 text-center bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent">
@@ -640,107 +799,6 @@ export default function EnhancedFactionDashboard() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* NFT Minting & Steganography */}
-        <div className="bg-gradient-to-br from-black/80 to-gray-900/80 backdrop-blur-md rounded-2xl p-8 border border-red-500/20 shadow-2xl">
-          <h2 className="text-3xl font-bold text-white mb-6 text-center bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent">
-            🛠️ Mint & Hide Your Secret Clue
-          </h2>
-          
-          <div className="mb-6 p-4 bg-gradient-to-r from-blue-900/30 to-purple-900/30 border border-blue-500/30 rounded-lg">
-            <h3 className="text-blue-400 font-bold text-lg mb-2">🎭 Complete Workflow:</h3>
-            <ul className="text-gray-300 text-sm space-y-1">
-              <li>• <strong>Step 1:</strong> Mint a clue NFT with your secret message</li>
-              <li>• <strong>Step 2:</strong> Embed your clue in an image using steganography</li>
-              <li>• <strong>Step 3:</strong> Share the image - other players hunt for your hidden clue!</li>
-              <li>• <strong>Step 4:</strong> Defend your clues or steal from opponents</li>
-            </ul>
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Minting Section */}
-            <div className="space-y-6">
-              <div>
-                <label className="block text-white text-sm mb-3 font-semibold">Your Secret Clue</label>
-                <textarea
-                  value={clueText}
-                  onChange={(e) => setClueText(e.target.value)}
-                  placeholder="Enter your secret message that others will hunt for..."
-                  className="w-full bg-gray-700 text-white rounded-lg px-4 py-3 border border-gray-600 focus:border-blue-500 focus:outline-none h-32 resize-none"
-                />
-                <p className="text-gray-400 text-xs mt-2">
-                  This will be hashed and stored on-chain. Make it cryptic and valuable!
-                </p>
-              </div>
-              
-              <button
-                onClick={mintNFT}
-                disabled={!clueText || !selectedFaction || isProcessingStego}
-                className="w-full px-6 py-4 bg-gradient-to-r from-yellow-600 to-yellow-700 text-white rounded-xl hover:from-yellow-500 hover:to-yellow-600 transition-all duration-300 transform hover:scale-105 shadow-2xl border border-yellow-500/50 font-bold text-lg disabled:opacity-50"
-              >
-                {isProcessingStego ? 'Creating Your Clue...' : 'Mint Clue NFT (0.01 ETH)'}
-              </button>
-              
-              <div className="text-center">
-                <button
-                  onClick={() => setShowStegHideSection(!showStegHideSection)}
-                  className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-500 hover:to-blue-500 transition-all duration-300 text-sm font-semibold"
-                >
-                  {showStegHideSection ? 'Hide StegHide Section' : 'Show StegHide Integration'}
-                </button>
-              </div>
-            </div>
-            
-            {/* StegHide Integration */}
-            {showStegHideSection && (
-              <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 p-6 rounded-xl border border-gray-600/30 backdrop-blur-sm">
-                <StegHideEmbed 
-                  clueText={clueText}
-                  onImageGenerated={(imageData) => {
-                    setStegoImage(imageData);
-                    setSuccessMessage('Steganographic image created! Share it to start the hunt!');
-                    setShowSuccessToast(true);
-                    setTimeout(() => setShowSuccessToast(false), 5000);
-                  }}
-                />
-                
-                {stegoImage && (
-                  <div className="mt-6 p-4 bg-green-900/30 border border-green-500/30 rounded-lg">
-                    <h4 className="text-green-400 font-semibold mb-2">🎨 Steganographic Image Ready!</h4>
-                    <img 
-                      src={stegoImage} 
-                      alt="Steganographic image" 
-                      className="w-full max-h-64 rounded-lg border border-gray-600 mb-4" 
-                    />
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => {
-                          const link = document.createElement('a');
-                          link.href = stegoImage;
-                          link.download = 'hidden-clue.png';
-                          link.click();
-                        }}
-                        className="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-500 hover:to-emerald-500 transition-all duration-300 text-sm font-semibold"
-                      >
-                        💾 Download Image
-                      </button>
-                      <button
-                        onClick={() => navigator.clipboard.writeText(window.location.origin + '/gallery')}
-                        className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-500 hover:to-cyan-500 transition-all duration-300 text-sm font-semibold"
-                      >
-                        🔗 Share Gallery Link
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-          
-          <div className="mt-6 text-center text-gray-400 text-sm">
-            <p>💡 <strong>Pro Tip:</strong> High-quality PNG images work best for steganography. Share your creations in the gallery!</p>
           </div>
         </div>
 

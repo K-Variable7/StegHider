@@ -13,7 +13,7 @@ import { ethers } from 'ethers';
 // DynamicClueNFT ABI
 const CLUE_NFT_ABI = DYNAMIC_CLUE_NFT_ABI;
 
-const CONTRACT_ADDRESS = "0x9AaD4AC1113A3ecb6FBacB0212bD01422Cf8eb6f"; // DynamicClueNFT on Base Sepolia
+const CONTRACT_ADDRESS = "0x7fE9313c7e65A0c8Db47F9Fbb825Bab10bbbd1f4"; // DynamicClueNFT on Base Sepolia
 
 const FACTIONS = [
   { id: 0, name: 'Red', color: 'bg-red-500', description: 'Aggressive hunters' },

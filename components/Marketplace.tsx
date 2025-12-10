@@ -3,7 +3,7 @@ import { useAccount, useReadContract, useWriteContract, useWatchContractEvent } 
 import { baseSepolia } from 'wagmi/chains';
 import { DYNAMIC_CLUE_NFT_ABI } from '../utils/dynamicClueNftAbi';
 
-const CONTRACT_ADDRESS = "0x9AaD4AC1113A3ecb6FBacB0212bD01422Cf8eb6f";
+const CONTRACT_ADDRESS = "0x7fE9313c7e65A0c8Db47F9Fbb825Bab10bbbd1f4";
 
 export default function Marketplace() {
   const { address } = useAccount();
