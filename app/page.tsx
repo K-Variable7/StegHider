@@ -42,7 +42,7 @@ export default function Home() {
           className="absolute inset-0 w-full h-full object-cover opacity-5 mix-blend-screen pointer-events-none"
         />
         <div className="text-center relative z-10">
-          <h1 className={`${cinzelDecorative.className} text-8xl font-bold text-white mb-8 tracking-wider drop-shadow-2xl bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent`}>VAULTWARS</h1>
+          <h1 className={`${cinzelDecorative.className} text-6xl md:text-8xl font-bold text-white mb-8 tracking-wider drop-shadow-2xl bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent`}>VAULTWARS</h1>
           <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto drop-shadow-lg">
             Enter the Colosseum of Digital Warfare. Hidden clues await. Factions clash. Only the cunning survive.
           </p>
@@ -85,7 +85,7 @@ export default function Home() {
                 ×
               </button>
               
-              <h2 className={`${cinzelDecorative.className} text-4xl font-bold text-white mb-6 text-center bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent`}>VAULTWARS: The Eternal Hunt</h2>
+              <h2 className={`${cinzelDecorative.className} text-3xl md:text-4xl font-bold text-white mb-6 text-center bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent`}>VAULTWARS: The Eternal Hunt</h2>
               
               <div className="space-y-6 text-gray-300">
                 <div>
@@ -176,10 +176,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black">
-      <header className="p-6">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-8">
-            <h1 className="text-4xl font-bold text-white">VaultWars</h1>
+      <div className="max-w-7xl mx-auto">
+        <header className="p-6">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-8">
+              <h1 className="text-4xl font-bold text-white">VaultWars</h1>
             {isConnected && (
               <nav className="flex space-x-4">
                 <a
@@ -271,6 +272,7 @@ export default function Home() {
           </Suspense>
         )}
       </main>
+      </div>
     </div>
   );
 }
