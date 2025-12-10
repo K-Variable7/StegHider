@@ -1,0 +1,12 @@
+{
+  "name": "steg-hider-extension",
+  "version": "1.0.0",
+  "description": "Browser extension for StegHider - hide secret messages in images",
+  "scripts": {
+    "test": "node test-extension.js",
+    "build": "echo 'Extension built successfully'"
+  },
+  "keywords": ["steganography", "privacy", "security", "browser-extension"],
+  "author": "StegHider Team",
+  "license": "MIT"
+}

@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "nostr-relaypool": "^0.6.30",
+    "nostr-tools": "^2.19.2",
+    "viem": "^2.41.2"
+  }
+}

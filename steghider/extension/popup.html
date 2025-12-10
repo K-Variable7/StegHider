@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StegHider</title>
+    <style>
+        body {
+            width: 350px;
+            height: 500px;
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: #1e1e1e;
+            color: #e0e0e0;
+        }
+        .container {
+            padding: 15px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 18px;
+            color: #00d4ff;
+        }
+        .tab-buttons {
+            display: flex;
+            margin-bottom: 15px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 8px;
+            background: #333;
+            border: none;
+            color: #ccc;
+            cursor: pointer;
+            border-radius: 4px 4px 0 0;
+        }
+        .tab-btn.active {
+            background: #444;
+            color: #00d4ff;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 10px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 3px;
+            font-size: 12px;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 6px;
+            background: #2c2c2c;
+            border: 1px solid #444;
+            border-radius: 3px;
+            color: #e0e0e0;
+        }
+        .btn {
+            width: 100%;
+            padding: 8px;
+            background: #00d4ff;
+            border: none;
+            border-radius: 3px;
+            color: #000;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn:hover {
+            background: #00a3cc;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            position: relative;
+        }
+        .status.success {
+            background: #2d5a2d;
+            color: #90ee90;
+        }
+        .status.error {
+            background: #5a2d2d;
+            color: #ff9090;
+        }
+        .status .close-btn {
+            position: absolute;
+            top: 2px;
+            right: 5px;
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>StegHider</h1>
+        </div>
+
+        <div class="tab-buttons">
+            <button class="tab-btn active" id="embedTab">Hide</button>
+            <button class="tab-btn" id="extractTab">Reveal</button>
+            <button class="tab-btn" id="metawipeTab">MetaWipe</button>
+            <button class="tab-btn" id="settingsTab">⚙️</button>
+            <button class="tab-btn" id="donateTab">💰</button>
+            <button class="tab-btn" id="suggestionsTab">💬</button>
+        </div>
+
+        <div id="embed" class="tab-content active">
+            <div class="form-group">
+                <label>Secret Message</label>
+                <input type="text" id="secret-message" placeholder="Enter secret message">
+            </div>
+            <div class="form-group">
+                <label>Or Select File</label>
+                <input type="file" id="file-input">
+                <div id="drop-zone" style="border: 2px dashed #444; padding: 20px; text-align: center; margin-top: 10px;">
+                    Or drag & drop file here
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Password (Optional)</label>
+                <input type="password" id="password" placeholder="For encryption">
+            </div>
+            <div class="form-group">
+                <label>Self-Destruct After (hours)</label>
+                <input type="number" id="expiration" placeholder="0 = never" min="0">
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" id="enable-rs"> Enable Error Correction</label>
+            </div>
+            <div class="form-group">
+                <label>Encryption Algorithm</label>
+                <select id="encryption-algo">
+                    <option value="none">None</option>
+                    <option value="aes">AES-256</option>
+                    <option value="chacha">ChaCha20</option>
+                </select>
+            </div>
+            <button class="btn" id="hideBtn">Hide in Current Image</button>
+        </div>
+
+        <div id="extract" class="tab-content">
+            <div class="form-group">
+                <label>Password (If encrypted)</label>
+                <input type="password" id="extract-password" placeholder="Enter password">
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" id="extract-rs"> Reed-Solomon Used</label>
+            </div>
+            <button class="btn" id="extractBtn">Extract from Current Image</button>
+        </div>
+
+        <div id="settings" class="tab-content">
+            <div class="form-group">
+                <label><input type="checkbox" id="auto-wipe"> Auto-wipe metadata on hide</label>
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" id="secure-delete"> Secure delete temp files</label>
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" id="use-tor"> Prefer Tor for sharing (requires Tor Browser)</label>
+            </div>
+            <div class="form-group">
+                <label>Default RS Level</label>
+                <select id="rs-level">
+                    <option value="10">10 (Default)</option>
+                    <option value="20">20 (High)</option>
+                    <option value="5">5 (Low)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Encryption Keys</label>
+                <button id="generate-key">Generate New Key</button>
+                <button id="export-keys">Export Keys</button>
+                <button id="import-key">Import Key</button>
+                <select id="key-select"></select>
+            </div>
+            <div class="form-group">
+                <label>Share Key via QR</label>
+                <button id="generate-qr">Generate QR for Selected Key</button>
+                <div id="qr-container" style="margin-top: 10px;"></div>
+            </div>
+            <button class="btn" id="saveSettings">Save Settings</button>
+        </div>
+
+        <div id="donate" class="tab-content">
+            <h3>Support StegHider</h3>
+            <p>StegHider is free and open-source. Support development:</p>
+            <button class="btn" onclick="window.open('https://www.paypal.com/donate/?hosted_button_id=YOUR_BUTTON_ID', '_blank')">Donate via PayPal</button>
+            <button class="btn" onclick="navigator.clipboard.writeText('bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh')">Copy BTC Address</button>
+            <p>BTC: bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh</p>
+            <p>Premium features coming soon!</p>
+        </div>
+
+        <div id="suggestions" class="tab-content">
+            <h3>Share Your Ideas</h3>
+            <p>What features would you like to see more of? What should we improve or remove?</p>
+            <div class="form-group">
+                <label for="suggestion-text">Your Suggestion:</label>
+                <textarea id="suggestion-text" rows="6" placeholder="Tell us what you think..."></textarea>
+            </div>
+            <button class="btn" id="submit-suggestion">Submit Suggestion</button>
+        </div>
+
+        <div id="status" class="status" style="display: none;">
+            <span id="status-text"></span>
+            <button class="close-btn" onclick="hideStatus()">×</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="popup.js"></script>
+</body>
+</html>

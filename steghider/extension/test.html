@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StegHider Extension Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-image {
+            max-width: 300px;
+            height: auto;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border-left: 4px solid #28a745;
+        }
+        .error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <h1>StegHider Extension Test Page</h1>
+
+    <div class="test-section">
+        <h2>Test Image</h2>
+        <img src="test_image.png" alt="Test image" class="test-image" id="testImage">
+        <p>This is a test image served locally. The extension should be able to hide data in this image.</p>
+    </div>
+
+    <div class="test-section">
+        <h2>Hide Data Test</h2>
+        <textarea id="hideMessage" placeholder="Enter message to hide">Hello from StegHider!</textarea>
+        <input type="file" id="hideFile">
+        <input type="password" id="hidePassword" placeholder="Password (optional)">
+        <button id="hideBtn">Hide Data</button>
+        <div id="hideResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Extract Data Test</h2>
+        <input type="password" id="extractPassword" placeholder="Password (if used)">
+        <button id="extractBtn">Extract Data</button>
+        <div id="extractResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Automated Testing</h2>
+        <button id="testBtn">Run All Tests</button>
+        <div id="testResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Instructions</h2>
+        <ol>
+            <li>Install the StegHider extension in Chrome/Firefox</li>
+            <li>Navigate to this page</li>
+            <li>Use the popup interface or right-click the test image</li>
+            <li>Test hiding and extracting data</li>
+            <li>Check browser console for detailed logs</li>
+        </ol>
+    </div>
+
+    <script src="test-automation.js"></script>
+    <script>
+        // Test functions for manual testing
+        async function testHide() {
+            const message = document.getElementById('hideMessage').value;
+            const fileInput = document.getElementById('hideFile');
+            const password = document.getElementById('hidePassword').value;
+            const resultDiv = document.getElementById('hideResult');
+
+            let payload = message;
+
+            try {
+                if (fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    if (file.size > 15000) {
+                        resultDiv.innerHTML = '<div class="result error">File too large! Max 15KB for this image size.</div>';
+                        return;
+                    }
+                    const arrayBuffer = await file.arrayBuffer();
+                    const bytes = new Uint8Array(arrayBuffer);
+                    const binaryString = Array.from(bytes).map(b => String.fromCharCode(b)).join('');
+                    payload = `FILE:${file.name}:${file.size}:${binaryString}`;
+                } else if (message) {
+                    payload = `TEXT:${message}`;
+                } else {
+                    resultDiv.innerHTML = '<div class="result error">Please enter a message or select a file</div>';
+                    return;
+                }
+
+                const steg = new StegHider();
+                const result = await steg.hideMessage(
+                    document.getElementById('testImage').src,
+                    payload,
+                    { password: password }
+                );
+
+                if (result.success) {
+                    // Update the image with hidden data
+                    document.getElementById('testImage').src = result.dataUrl;
+                    resultDiv.innerHTML = `<div class="result">Success! Hidden ${result.bitsHidden} bits (${result.maxBits} available). Image updated.</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="result error">Error: ${result.error}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testExtract() {
+            const password = document.getElementById('extractPassword').value;
+            const resultDiv = document.getElementById('extractResult');
+
+            try {
+                const steg = new StegHider();
+                const result = await steg.extractMessage(
+                    document.getElementById('testImage').src,
+                    { password: password }
+                );
+
+                if (result.success) {
+                    const data = result.message;
+                    if (data.startsWith('TEXT:')) {
+                        resultDiv.innerHTML = `<div class="result">Extracted: "${data.substring(5)}"</div>`;
+                    } else if (data.startsWith('FILE:')) {
+                        const parts = data.split(':');
+                        const filename = parts[1];
+                        const size = parseInt(parts[2]);
+                        const fileData = parts.slice(3).join(':');
+                        // Convert back to bytes and download
+                        const bytes = fileData.split('').map(c => c.charCodeAt(0));
+                        const blob = new Blob([new Uint8Array(bytes)]);
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        resultDiv.innerHTML = `<div class="result">File extracted: ${filename} (${size} bytes)</div>`;
+                    } else {
+                        resultDiv.innerHTML = `<div class="result">Extracted: "${data}"</div>`;
+                    }
+                } else {
+                    resultDiv.innerHTML = `<div class="result error">Error: ${result.error}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testMetaWipe() {
+            const resultDiv = document.getElementById('metawipeResult');
+
+            try {
+                const steg = new StegHider();
+                const result = await steg.metawipeImage(
+                    document.getElementById('testImage').src
+                );
+
+                if (result.success) {
+                    document.getElementById('testImage').src = result.dataUrl;
+                    resultDiv.innerHTML = `<div class="result">MetaWipe successful! Image cleaned.</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="result error">Error: ${result.error}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">Error: ${error.message}</div>`;
+            }
+        }
+
+        // Override the automated test to show results in UI
+        window.originalRunAutomatedTests = window.runAutomatedTests;
+        window.runAutomatedTests = async function() {
+            const resultDiv = document.getElementById('testResults');
+            resultDiv.innerHTML = '<div class="result">Running tests...</div>';
+
+            try {
+                const results = await originalRunAutomatedTests();
+
+                let html = `<div class="result ${results.failed === 0 ? '' : 'error'}">`;
+                html += `Tests completed: ${results.passed} passed, ${results.failed} failed<br><br>`;
+
+                results.tests.forEach(test => {
+                    html += `${test.passed ? '✅' : '❌'} ${test.name}`;
+                    if (test.details) html += `: ${test.details}`;
+                    html += '<br>';
+                });
+
+                html += '</div>';
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">Test error: ${error.message}</div>`;
+            }
+        };
+
+        // Load the StegHider library
+        if (typeof StegHider === 'undefined') {
+            const script = document.createElement('script');
+            script.src = 'steg.js';
+            document.head.appendChild(script);
+        }
+
+        // Add event listeners
+        document.getElementById('hideBtn').addEventListener('click', testHide);
+        document.getElementById('extractBtn').addEventListener('click', testExtract);
+        document.getElementById('testBtn').addEventListener('click', () => {
+            if (typeof runAutomatedTests !== 'undefined') {
+                runAutomatedTests();
+            }
+        });
+    </script>
+</body>
+</html>

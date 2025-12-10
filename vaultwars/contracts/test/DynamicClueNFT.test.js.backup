@@ -1,0 +1,207 @@
+const { expect } = require("chai");
+const { ethers } = require("hardhat");
+
+describe("DynamicClueNFT", function () {
+  let dynamicClueNFT;
+  let owner, player1, player2;
+
+  beforeEach(async function () {
+    [owner, player1, player2] = await ethers.getSigners();
+
+    const DynamicClueNFT = await ethers.getContractFactory("DynamicClueNFT");
+    dynamicClueNFT = await DynamicClueNFT.deploy(12498); // Using same subscription ID
+  });
+
+  it("Should mint a dynamic NFT and return gateway URL", async function () {
+    // Mint a clue NFT
+    const tx = await dynamicClueNFT.connect(owner).mintClue(
+      player1.address,
+      0, // Red faction
+      5, // difficulty
+      ethers.keccak256(ethers.toUtf8Bytes("test clue")),
+      { value: ethers.parseEther("0.01") } // Mint price
+    );
+    await tx.wait();
+
+    // Check token URI returns gateway URL
+    const tokenURI = await dynamicClueNFT.tokenURI(0);
+    expect(tokenURI).to.include("https://vaultwars.vercel.app/api/nft/0");
+    expect(tokenURI).to.include("?v="); // Version parameter
+
+    // Check evolution state
+    const evolution = await dynamicClueNFT.getEvolutionState(0);
+    expect(evolution.level).to.equal(1);
+    expect(evolution.experience).to.equal(0);
+    expect(evolution.cluesCollected).to.equal(0);
+  });
+
+  it("Should evolve NFT when experience is gained", async function () {
+    // Mint NFT
+    await dynamicClueNFT.connect(owner).mintClue(
+      player1.address,
+      0,
+      5,
+      ethers.keccak256(ethers.toUtf8Bytes("test clue")),
+      { value: ethers.parseEther("0.01") }
+    );
+
+    // Add experience
+    await dynamicClueNFT.connect(owner).addExperience(0, 150, "test");
+
+    // Check level up
+    const evolution = await dynamicClueNFT.getEvolutionState(0);
+    expect(evolution.level).to.equal(2);
+    expect(evolution.experience).to.equal(150);
+  });
+
+  it("Should update evolution stats on game actions", async function () {
+    // Mint NFT
+    await dynamicClueNFT.connect(owner).mintClue(
+      player1.address,
+      0,
+      5,
+      ethers.keccak256(ethers.toUtf8Bytes("test clue")),
+      { value: ethers.parseEther("0.01") }
+    );
+
+    // Update stats
+    await dynamicClueNFT.connect(owner).updateEvolutionStats(0, true, true, true);
+
+    const evolution = await dynamicClueNFT.getEvolutionState(0);
+    expect(evolution.cluesCollected).to.equal(1);
+    expect(evolution.revealsSurvived).to.equal(1);
+    expect(evolution.stealsSuccessful).to.equal(1);
+    expect(evolution.experience).to.equal(85); // 10 + 25 + 50
+  });
+
+  it("Should generate faction perks data", async function () {
+    // Mint NFT for each faction
+    const factions = [
+      { id: 0, name: "Crimson Legion" },
+      { id: 1, name: "Azure Order" },
+      { id: 2, name: "Emerald Covenant" },
+      { id: 3, name: "Golden Elite" }
+    ];
+
+    for (let i = 0; i < factions.length; i++) {
+      const faction = factions[i];
+      const tokenId = i; // Use different token ID for each faction
+
+      await dynamicClueNFT.connect(owner).mintClue(
+        player1.address,
+        faction.id,
+        5,
+        ethers.keccak256(ethers.toUtf8Bytes(`test clue ${faction.name}`)),
+        { value: ethers.parseEther("0.01") }
+      );
+
+      // Add some achievements
+      await dynamicClueNFT.connect(owner).updateEvolutionStats(tokenId, true, true, true);
+
+      // Get JSON data
+      const jsonData = await dynamicClueNFT.generateSVG(tokenId);
+      
+      // Verify JSON structure contains faction name
+      expect(jsonData).to.include(`"faction":"${faction.name}"`);
+      expect(jsonData).to.include('"level":');
+      expect(jsonData).to.include('"experience":');
+    }
+  });
+  });
+
+  it("Should generate cosmic evolution data for level 10+ NFTs", async function () {
+    // Mint NFT
+    await dynamicClueNFT.connect(owner).mintClue(
+      player1.address,
+      0, // Red faction
+      5,
+      ethers.keccak256(ethers.toUtf8Bytes("cosmic test")),
+      { value: ethers.parseEther("0.01") }
+    );
+
+    // Level up to 10 by adding lots of experience
+    await dynamicClueNFT.connect(owner).addExperience(0, 4000, "cosmic evolution test");
+
+    // Verify level 10
+    const evolution = await dynamicClueNFT.getEvolutionState(0);
+    expect(evolution.level).to.be.at.least(10);
+
+    // Get JSON data
+    const jsonData = await dynamicClueNFT.generateSVG(0);
+
+    // Verify JSON contains cosmic-level data
+    expect(jsonData).to.include('"level":10');
+    expect(jsonData).to.include('"experience":4000');
+    expect(jsonData).to.include('"faction":"Crimson Legion"');
+  });
+
+  it("Should apply faction perks to reveal costs", async function () {
+    // Mint NFT for Red faction (should get 20% reveal discount)
+    await dynamicClueNFT.connect(owner).mintClue(
+      player1.address,
+      0, // Red faction
+      5,
+      ethers.keccak256(ethers.toUtf8Bytes("red faction test")),
+      { value: ethers.parseEther("0.01") }
+    );
+
+    // Mint NFT for Blue faction (should get 20% block discount)
+    await dynamicClueNFT.connect(owner).mintClue(
+      player2.address,
+      1, // Blue faction
+      5,
+      ethers.keccak256(ethers.toUtf8Bytes("blue faction test")),
+      { value: ethers.parseEther("0.01") }
+    );
+
+    // Test reveal fee calculation for Red faction (should be discounted)
+    const redRevealFee = await dynamicClueNFT.connect(player1).calculateFee(1, 24);
+    const baseRevealFee = ethers.parseEther("0.001"); // Base fee
+    expect(redRevealFee).to.equal((baseRevealFee * 8n) / 10n); // 20% discount
+
+    // Test block fee calculation for Blue faction (should be discounted)
+    const blueBlockFee = await dynamicClueNFT.connect(player2).calculateBlockFee(24);
+    const baseBlockFee = ethers.parseEther("0.002"); // Base fee
+    expect(blueBlockFee).to.equal((baseBlockFee * 8n) / 10n); // 20% discount
+  });
+
+  it("Should maintain accurate leaderboards", async function () {
+    // Mint multiple NFTs and create different achievement levels
+    const players = [player1, player2];
+    const factions = [0, 1, 2, 3]; // All factions
+
+    for (let i = 0; i < 8; i++) {
+      const player = players[i % 2];
+      const faction = factions[i % 4];
+      
+      await dynamicClueNFT.connect(owner).mintClue(
+        player.address,
+        faction,
+        5,
+        ethers.keccak256(ethers.toUtf8Bytes(`leaderboard test ${i}`)),
+        { value: ethers.parseEther("0.01") }
+      );
+
+      // Add varying levels of achievements
+      const achievements = i + 1; // 1 to 8 achievements
+      for (let j = 0; j < achievements; j++) {
+        await dynamicClueNFT.connect(owner).updateEvolutionStats(i, true, false, false);
+      }
+    }
+
+    // Test top hoarders leaderboard
+    const [hoarderAddresses, hoarderScores] = await dynamicClueNFT.getTopHoarders(5);
+    expect(hoarderAddresses.length).to.equal(5);
+    expect(hoarderScores.length).to.equal(5);
+    
+    // Scores should be in descending order
+    for (let i = 0; i < hoarderScores.length - 1; i++) {
+      expect(hoarderScores[i]).to.be.at.least(hoarderScores[i + 1]);
+    }
+
+    // Test top survivors leaderboard
+    const [survivorAddresses, survivorScores] = await dynamicClueNFT.getTopRevealSurvivors(5);
+    expect(survivorAddresses.length).to.equal(5);
+    expect(survivorScores.length).to.equal(5);
+  });
+});

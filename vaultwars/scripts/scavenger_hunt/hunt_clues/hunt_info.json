@@ -1,0 +1,38 @@
+[
+  {
+    "clue_number": 1,
+    "clue_text": "The next secret is hidden in a photo of a map",
+    "image_path": "hunt_clues/clue_1.png",
+    "ipfs_uri": "ipfs://QmS4v1iY7dR9aK2pX8mN3tL5uJ9vZ6cY8wQ3eR7tY2xP9n/clue_1.png",
+    "base_image": "images/test_image.png",
+    "encryption_level": "basic"
+  },
+  {
+    "clue_number": 2,
+    "clue_text": "Next stop: A vault themed image with faction gold colors",
+    "image_path": "hunt_clues/clue_2.png",
+    "base_image": "images/test_image.png",
+    "encryption_level": "basic"
+  },
+  {
+    "clue_number": 3,
+    "clue_text": "Follow the trail to the next image tagged with @StegHiderHunt",
+    "image_path": "hunt_clues/clue_3.png",
+    "base_image": "images/test_image.png",
+    "encryption_level": "basic"
+  },
+  {
+    "clue_number": 4,
+    "clue_text": "The next secret is hidden in a photo of a castle",
+    "image_path": "hunt_clues/clue_4.png",
+    "base_image": "images/test_image.png",
+    "encryption_level": "basic"
+  },
+  {
+    "clue_number": 5,
+    "clue_text": "Congratulations! You've completed the hunt. Claim your reward at: https://steghider.com/reward/5462",
+    "image_path": "hunt_clues/clue_5.png",
+    "base_image": "images/test_image.png",
+    "encryption_level": "basic"
+  }
+]
