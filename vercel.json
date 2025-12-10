@@ -3,7 +3,10 @@
   "builds": [
     {
       "src": "vaultwars/frontend/package.json",
-      "use": "@vercel/next"
+      "use": "@vercel/next",
+      "config": {
+        "rootDirectory": "vaultwars/frontend"
+      }
     }
   ],
   "headers": [
