@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "vaultwars/frontend/package.json",
+      "src": "package.json",
       "use": "@vercel/next",
       "config": {
         "rootDirectory": "vaultwars/frontend"

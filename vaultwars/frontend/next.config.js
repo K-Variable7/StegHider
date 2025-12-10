@@ -1,3 +1,11 @@
+const withPWA = require('next-pwa')({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development',
+  buildExcludes: [/manifest\.json$/]
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   outputFileTracingRoot: require('path').join(__dirname, '../../'),
@@ -40,5 +48,7 @@ const nextConfig = {
     return config;
   },
 };
+
+module.exports = withPWA(nextConfig);
 
 module.exports = withPWA(nextConfig);
