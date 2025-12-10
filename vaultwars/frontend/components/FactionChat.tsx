@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useAccount } from 'wagmi';
-import { Client } from '@xmtp/xmtp-js';
+// import { Client } from '@xmtp/xmtp-js';
 import { ethers } from 'ethers';
 
 interface Message {
@@ -18,15 +18,21 @@ interface FactionChatProps {
 
 export default function FactionChat({ factionId }: FactionChatProps) {
   const { address } = useAccount();
-  const [client, setClient] = useState<Client | null>(null);
+  // const [client, setClient] = useState<Client | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(true); // Mock as always connected
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  useEffect(() => {
+    if (address && !isConnected) {
+      connectToChat();
+    }
+  }, [address, isConnected]);
 
   useEffect(() => {
     scrollToBottom();
@@ -36,60 +42,42 @@ export default function FactionChat({ factionId }: FactionChatProps) {
     if (!address) return;
 
     try {
-      // Create XMTP client
-      const wallet = new ethers.Wallet(process.env.NEXT_PUBLIC_PRIVATE_KEY || ''); // In production, use user's wallet
-      const xmtp = await Client.create(wallet);
-      setClient(xmtp);
+      // Mock connection - in real implementation, connect to XMTP or other chat service
       setIsConnected(true);
 
-      // Listen for messages
-      const conversation = await xmtp.conversations.newConversation(
-        `vaultwars-faction-${factionId}@example.com`, // Placeholder - in real app, use faction coordinator
+      // Add some mock messages for demonstration
+      const mockMessages: Message[] = [
         {
-          conversationId: `vaultwars-faction-${factionId}`,
-          metadata: { faction: factionId.toString() }
+          id: '1',
+          sender: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
+          content: `Welcome to faction ${factionId} chat!`,
+          timestamp: new Date(Date.now() - 300000)
+        },
+        {
+          id: '2',
+          sender: '0x742d35Cc6634C0532925a3b844Bc454e4438f44f',
+          content: 'Let\'s coordinate our steganography strategy!',
+          timestamp: new Date(Date.now() - 240000)
         }
-      );
-
-      // Load existing messages
-      const existingMessages = await conversation.messages();
-      const formattedMessages = existingMessages.map((msg: any) => ({
-        id: msg.id,
-        sender: msg.senderAddress,
-        content: msg.content,
-        timestamp: new Date(msg.sent)
-      }));
-      setMessages(formattedMessages);
-
-      // Listen for new messages
-      const stream = await conversation.streamMessages();
-      for await (const message of stream) {
-        const newMsg: Message = {
-          id: message.id,
-          sender: message.senderAddress,
-          content: message.content,
-          timestamp: new Date(message.sent)
-        };
-        setMessages(prev => [...prev, newMsg]);
-      }
+      ];
+      setMessages(mockMessages);
     } catch (error) {
       console.error('Failed to connect to faction chat:', error);
     }
   };
 
   const sendMessage = async () => {
-    if (!client || !newMessage.trim()) return;
+    if (!newMessage.trim()) return;
 
     try {
-      const conversation = await client.conversations.newConversation(
-        `vaultwars-faction-${factionId}@example.com`,
-        {
-          conversationId: `vaultwars-faction-${factionId}`,
-          metadata: { faction: factionId.toString() }
-        }
-      );
-
-      await conversation.send(newMessage);
+      // Mock sending message - in real implementation, send via XMTP or other service
+      const newMsg: Message = {
+        id: Date.now().toString(),
+        sender: address || 'unknown',
+        content: newMessage,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, newMsg]);
       setNewMessage('');
     } catch (error) {
       console.error('Failed to send message:', error);

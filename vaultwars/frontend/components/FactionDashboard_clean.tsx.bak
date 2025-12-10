@@ -13,7 +13,7 @@ import { ethers } from 'ethers';
 // DynamicClueNFT ABI
 const CLUE_NFT_ABI = DYNAMIC_CLUE_NFT_ABI;
 
-const CONTRACT_ADDRESS = "0x9AaD4AC1113A3ecb6FBacB0212bD01422Cf8eb6f"; // DynamicClueNFT on Base Sepolia
+const CONTRACT_ADDRESS = "0x98134BFEeB202ef102245A9f20c48e39238117a6"; // DynamicClueNFT on Base Sepolia
 
 const FACTIONS = [
   { id: 0, name: 'Red', color: 'bg-red-500', description: 'Aggressive hunters' },
@@ -128,14 +128,14 @@ export default function FactionDashboard() {
     address: CONTRACT_ADDRESS,
     abi: CLUE_NFT_ABI,
     functionName: 'calculateFee',
-    args: [numReveals, durationHours, address]
+    args: [numReveals, durationHours]
   });
 
   const { data: blockFee } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: CLUE_NFT_ABI,
     functionName: 'calculateBlockFee',
-    args: [durationHours, address]
+    args: [durationHours]
   });
 
   useEffect(() => {
@@ -788,8 +788,6 @@ export default function FactionDashboard() {
                 </div>
               )}
             </div>
-          </div>
-        </div>
 
       {/* Faction Chat */}
       <FactionChat factionId={selectedFaction || 0} />
@@ -815,7 +813,6 @@ export default function FactionDashboard() {
           pot: Number(f.pot)
         }))}
       />
-    </div>
     </div>
   );
 }

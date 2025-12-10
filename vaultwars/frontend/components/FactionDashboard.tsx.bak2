@@ -2,7 +2,7 @@ import { DYNAMIC_CLUE_NFT_ABI } from '../utils/dynamicClueNftAbi';
 import FactionChat from './FactionChat';
 import NostrFeed from './NostrFeed';
 import LoreModal from './LoreModal';
-import NFTGallery from './NFTGallery';
+// import NFTGallery from './NFTGallery';
 import { useState, useEffect } from 'react';
 import Confetti from 'react-confetti';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
@@ -13,7 +13,7 @@ import { ethers } from 'ethers';
 // DynamicClueNFT ABI
 const CLUE_NFT_ABI = DYNAMIC_CLUE_NFT_ABI;
 
-const CONTRACT_ADDRESS = "0x9AaD4AC1113A3ecb6FBacB0212bD01422Cf8eb6f"; // DynamicClueNFT on Base Sepolia
+const CONTRACT_ADDRESS = "0x98134BFEeB202ef102245A9f20c48e39238117a6"; // DynamicClueNFT on Base Sepolia
 
 const FACTIONS = [
   { id: 0, name: 'Red', color: 'bg-red-500', description: 'Aggressive hunters' },
@@ -128,14 +128,14 @@ export default function FactionDashboard() {
     address: CONTRACT_ADDRESS,
     abi: CLUE_NFT_ABI,
     functionName: 'calculateFee',
-    args: [numReveals, durationHours, address]
+    args: [numReveals, durationHours]
   });
 
   const { data: blockFee } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: CLUE_NFT_ABI,
     functionName: 'calculateBlockFee',
-    args: [durationHours, address]
+    args: [durationHours]
   });
 
   useEffect(() => {
@@ -791,7 +791,156 @@ export default function FactionDashboard() {
           </div>
         </div>
 
-      {/* Faction Chat */}
+<!--         {/* Nostr Ecosystem */} -->
+<!--         <div className="bg-gradient-to-br from-black/80 to-gray-900/80 backdrop-blur-md rounded-2xl p-8 border border-red-500/20 shadow-2xl"> -->
+<!--           <h2 className="text-3xl font-bold text-white mb-8 text-center bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent">Nostr Ecosystem ⚡</h2> -->
+<!--           <div className="grid grid-cols-1 md:grid-cols-2 gap-8"> -->
+<!--             {/* Zaps */} -->
+<!--             <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 p-6 rounded-xl border border-gray-600/30 backdrop-blur-sm"> -->
+<!--               <h3 className="font-bold text-white text-xl mb-4">⚡ Bitcoin Zaps</h3> -->
+<!--               <p className="text-gray-300 text-sm mb-6">Tip players for clever reveals, blocks, or strategies!</p> -->
+<!--                -->
+<!--               {/* Reaction Selector */} -->
+<!--               <div className="mb-6"> -->
+<!--                 <label className="block text-white text-sm mb-3 font-semibold">Choose Reaction:</label> -->
+<!--                 <div className="grid grid-cols-4 gap-3"> -->
+<!--                   {ZAP_REACTIONS.map((reaction) => ( -->
+<!--                     <button -->
+<!--                       key={reaction.emoji} -->
+<!--                       onClick={() => setSelectedZapReaction(reaction.emoji)} -->
+<!--                       className={`p-3 rounded-lg text-center transition-all duration-300 transform hover:scale-105 ${ -->
+<!--                         selectedZapReaction === reaction.emoji -->
+<!--                           ? 'bg-yellow-600 ring-2 ring-yellow-400 shadow-lg' -->
+<!--                           : 'bg-gray-700 hover:bg-gray-600 shadow-md' -->
+<!--                       }`} -->
+<!--                       title={reaction.description} -->
+<!--                     > -->
+<!--                       <div className="text-xl">{reaction.emoji}</div> -->
+<!--                       <div className="text-xs text-gray-300 mt-1">{reaction.description.split(' ')[0]}</div> -->
+<!--                     </button> -->
+<!--                   ))} -->
+<!--                 </div> -->
+<!--               </div> -->
+<!--  -->
+<!--               <div className="space-y-4"> -->
+<!--                 <button -->
+<!--                   onClick={() => handleZapPlayer('placeholder@getalby.com', 1000, selectedZapReaction)} -->
+<!--                   className="w-full px-6 py-4 bg-gradient-to-r from-yellow-600 to-yellow-700 text-white rounded-xl hover:from-yellow-500 hover:to-yellow-600 transition-all duration-300 transform hover:scale-105 shadow-2xl border border-yellow-500/50 font-bold text-lg" -->
+<!--                 > -->
+<!--                   Send 1000 sats zap {selectedZapReaction && selectedZapReaction} -->
+<!--                 </button> -->
+<!--                 <button -->
+<!--                   onClick={() => handleZapPlayer('placeholder@getalby.com', 5000, selectedZapReaction)} -->
+<!--                   className="w-full px-6 py-4 bg-gradient-to-r from-yellow-700 to-yellow-800 text-white rounded-xl hover:from-yellow-600 hover:to-yellow-700 transition-all duration-300 transform hover:scale-105 shadow-2xl border border-yellow-500/50 font-bold text-lg" -->
+<!--                 > -->
+<!--                   Send 5000 sats zap {selectedZapReaction && selectedZapReaction} -->
+<!--                 </button> -->
+<!--               </div> -->
+<!--             </div> -->
+<!--  -->
+<!--             {/* Nostr Leaderboard */} -->
+<!--             <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 p-6 rounded-xl border border-gray-600/30 backdrop-blur-sm"> -->
+<!--               <h3 className="font-bold text-white text-xl mb-4">🏆 Nostr Leaderboard</h3> -->
+<!--               <p className="text-gray-300 text-sm mb-6">Decentralized faction rankings across all relays</p> -->
+<!--               <button -->
+<!--                 onClick={updateNostrLeaderboard} -->
+<!--                 className="w-full px-6 py-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-500 hover:to-purple-600 transition-all duration-300 transform hover:scale-105 shadow-2xl border border-purple-500/50 font-bold text-lg mb-4" -->
+<!--               > -->
+<!--                 Refresh Scores -->
+<!--               </button> -->
+<!--               <div className="space-y-2 text-sm max-h-32 overflow-y-auto"> -->
+<!--                 {Object.entries(nostrLeaderboard).map(([faction, score]) => ( -->
+<!--                   <div key={faction} className="flex justify-between text-white bg-black/30 p-3 rounded-lg"> -->
+<!--                     <span className="font-semibold">{faction}:</span> -->
+<!--                     <span className="text-yellow-400 font-bold">{score} pts</span> -->
+<!--                   </div> -->
+<!--                 ))} -->
+<!--               </div> -->
+<!--             </div> -->
+<!--           </div> -->
+<!--  -->
+<!--           {/* NFT Metadata */} -->
+<!--           <div className="mt-8 bg-gradient-to-br from-gray-800/60 to-gray-900/60 p-6 rounded-xl border border-gray-600/30 backdrop-blur-sm"> -->
+<!--             <h3 className="font-bold text-white text-xl mb-4">📦 NFT Metadata Storage</h3> -->
+<!--             <p className="text-gray-300 text-sm mb-6">Store clue previews off-chain on Nostr for gas-free updates</p> -->
+<!--             <div className="flex space-x-3"> -->
+<!--               <button -->
+<!--                 onClick={() => storeCluePreview(1)} -->
+<!--                 className="flex-1 px-6 py-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-500 hover:to-green-600 transition-all duration-300 transform hover:scale-105 shadow-2xl border border-green-500/50 font-bold text-lg" -->
+<!--               > -->
+<!--                 Store Clue Preview -->
+<!--               </button> -->
+<!--               <button -->
+<!--                 onClick={() => getMetadata(1)} -->
+<!--                 className="flex-1 px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-500 hover:to-blue-600 transition-all duration-300 transform hover:scale-105 shadow-2xl border border-blue-500/50 font-bold text-lg" -->
+<!--               > -->
+<!--                 Load Metadata -->
+<!--               </button> -->
+<!--             </div> -->
+<!--           </div> -->
+<!--  -->
+<!--           {/* Zap Leaderboard */} -->
+<!--           <div className="mt-8 bg-gradient-to-br from-gray-800/60 to-gray-900/60 p-6 rounded-xl border border-gray-600/30 backdrop-blur-sm"> -->
+<!--             <h3 className="font-bold text-white text-xl mb-4">⚡🏆 Most Zapped Players</h3> -->
+<!--             <p className="text-gray-300 text-sm mb-6">Weekly leaderboard of players with the most Bitcoin zaps</p> -->
+<!--             <button -->
+<!--               onClick={updateZapLeaderboard} -->
+<!--               className="w-full px-6 py-4 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-xl hover:from-orange-500 hover:to-orange-600 transition-all duration-300 transform hover:scale-105 shadow-2xl border border-orange-500/50 font-bold text-lg mb-4" -->
+<!--             > -->
+<!--               Refresh Zap Leaderboard -->
+<!--             </button> -->
+<!--             <div className="space-y-3 max-h-32 overflow-y-auto"> -->
+<!--               {zapLeaderboard.slice(0, 5).map((player, index) => ( -->
+<!--                 <div key={player.pubkey} className="flex justify-between items-center text-sm bg-black/30 p-3 rounded-lg"> -->
+<!--                   <div className="flex items-center space-x-3"> -->
+<!--                     <span className="text-yellow-400 font-bold text-lg">#{index + 1}</span> -->
+<!--                     <span className="text-white font-mono text-xs"> -->
+<!--                       {player.pubkey.slice(0, 8)}... -->
+<!--                     </span> -->
+<!--                     {player.topReaction && ( -->
+<!--                       <span className="text-lg" title="Most used reaction"> -->
+<!--                         {player.topReaction} -->
+<!--                       </span> -->
+<!--                     )} -->
+<!--                   </div> -->
+<!--                   <span className="text-orange-400 font-bold"> -->
+<!--                     {player.totalZaps.toLocaleString()} sats -->
+<!--                   </span> -->
+<!--                 </div> -->
+<!--               ))} -->
+<!--               {zapLeaderboard.length === 0 && ( -->
+<!--                 <p className="text-gray-400 text-center py-4">No zaps recorded yet</p> -->
+<!--               )} -->
+<!--             </div> -->
+<!--           </div> -->
+<!--  -->
+<!--           {/* Cross-Chain Tease */} -->
+<!--           <div className="mt-8 bg-gradient-to-br from-purple-900/40 to-blue-900/40 border border-purple-500/40 p-6 rounded-xl shadow-2xl"> -->
+<!--             <h3 className="font-bold text-white text-2xl mb-4">🌉🚀 Cross-Chain Future</h3> -->
+<!--             <div className="space-y-4"> -->
+<!--               <div className="flex items-center space-x-4 bg-black/30 p-4 rounded-lg"> -->
+<!--                 <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-sm font-bold shadow-lg">E</div> -->
+<!--                 <div> -->
+<!--                   <p className="text-blue-400 font-bold text-lg">Ethereum Mainnet</p> -->
+<!--                   <p className="text-gray-300 text-sm">Coming soon - lower fees, more players</p> -->
+<!--                 </div> -->
+<!--               </div> -->
+<!--               <div className="flex items-center space-x-4 bg-black/30 p-4 rounded-lg"> -->
+<!--                 <div className="w-10 h-10 bg-orange-600 rounded-full flex items-center justify-center text-sm font-bold shadow-lg">₿</div> -->
+<!--                 <div> -->
+<!--                   <p className="text-orange-400 font-bold text-lg">Bitcoin Ordinals</p> -->
+<!--                   <p className="text-gray-300 text-sm">Future expansion - true Bitcoin-native clues</p> -->
+<!--                 </div> -->
+<!--               </div> -->
+<!--               <div className="mt-4 p-4 bg-gradient-to-r from-black/60 to-gray-900/60 rounded-lg border border-yellow-500/30"> -->
+<!--                 <p className="text-yellow-400 text-lg font-bold">🏛️ VaultWars: Empire Expansion</p> -->
+<!--                 <p className="text-gray-300 text-sm">Building the most decentralized scavenger hunt in crypto</p> -->
+<!--               </div> -->
+<!--             </div> -->
+<!--           </div> -->
+<!--         </div> -->
+<!--  -->
+<!--       {/* Faction Chat Placeholder */} -->
       <FactionChat factionId={selectedFaction || 0} />
 
       {/* Nostr Feed */}
@@ -803,7 +952,7 @@ export default function FactionDashboard() {
       )}
 
       {/* NFT Evolution Gallery */}
-      <NFTGallery />
+      {/* <NFTGallery /> */}
 
       {/* Lore Modal */}
       <LoreModal 
@@ -815,7 +964,6 @@ export default function FactionDashboard() {
           pot: Number(f.pot)
         }))}
       />
-    </div>
     </div>
   );
 }

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+    <rect width="1280" height="720" fill="#000000" />
+    <rect x="20" y="20" width="1240" height="80" fill="#dc2626" rx="12" />
+    <text x="640" y="70" font-family="Arial, sans-serif" font-size="36" fill="white" text-anchor="middle">VaultWars -
+        Blockchain Scavenger Hunt</text>
+
+    <rect x="40" y="120" width="600" height="560" fill="#1f2937" rx="16" />
+    <text x="340" y="180" font-family="Arial, sans-serif" font-size="28" fill="#dc2626" text-anchor="middle">Faction
+        Dashboard</text>
+    <rect x="80" y="220" width="200" height="120" fill="#374151" rx="8" />
+    <text x="180" y="285" font-family="Arial, sans-serif" font-size="16" fill="#10b981" text-anchor="middle">Red
+        Faction</text>
+    <rect x="320" y="220" width="200" height="120" fill="#374151" rx="8" />
+    <text x="420" y="285" font-family="Arial, sans-serif" font-size="16" fill="#3b82f6" text-anchor="middle">Blue
+        Faction</text>
+
+    <rect x="680" y="120" width="560" height="560" fill="#1f2937" rx="16" />
+    <text x="960" y="180" font-family="Arial, sans-serif" font-size="28" fill="#dc2626"
+        text-anchor="middle">Leaderboard</text>
+    <rect x="720" y="220" width="480" height="80" fill="#374151" rx="8" />
+    <text x="960" y="265" font-family="Arial, sans-serif" font-size="18" fill="#fbbf24" text-anchor="middle">🏆 Top
+        Players & Factions</text>
+</svg>
