@@ -14,6 +14,12 @@ A sophisticated NFT-based scavenger hunt game that leverages StegHider's stegano
 - **Teamwork Focus**: Faction-specific chat and collaborative clue solving
 - **Competitive Scoring**: Points awarded based on difficulty × multiplier × global scaling
 
+### Decentralized Social Layer (Nostr Integration)
+- **Faction Feeds**: Public relays for war rooms, memes, and strategy sharing
+- **Global Announcements**: Oracle-triggered events broadcast to all players
+- **Cross-Faction Taunts**: Censorship-resistant posts for rivalries and boasts
+- **Privacy Tie-In**: Embed clues in Nostr-posted images using StegHider extension
+
 ### Minimal On-Chain Metadata
 - **Privacy-First**: Only stores faction ID, multiplier, and clue hash on-chain
 - **Ownership Verification**: Frontend verifies NFT ownership before revealing clues
@@ -126,6 +132,43 @@ python generate_hunt.py --num_clues 10 --password mysecret
 - **On-Chain Metrics**: Real-time faction scores and difficulty levels
 - **Participation Tracking**: Oracle-fed player count updates
 - **Performance Analytics**: Solve rates and multiplier effectiveness
+
+## 💰 Monetary Structure
+
+### Sustainable Monetary Structure for VaultWars: My Opinion
+In my view, VaultWars— with its unique blend of steganography puzzles, faction warfare, oracle-driven fairness, and betrayal mechanics like the steal claw— is positioned to thrive in the 2025 Web3 gaming landscape, where sustainability is key to avoiding the hype crashes of past cycles. Drawing from current trends in Web3 game economics, the project needs a hybrid monetization model that balances player incentives (e.g., play-to-earn elements) with developer revenue, while incorporating deflationary mechanics and community governance to ensure long-term scaling. This isn't just about covering costs like Chainlink oracle fees, server maintenance, and marketing; it's about creating a self-reinforcing ecosystem where growth funds more growth.
+The goal: Keep the project "afloat" by generating consistent revenue to hit break-even (e.g., $50k–$100k/month initially for a small team), then scale upwards by reinvesting into bigger prize pots, feature expansions (e.g., AI-generated hunts), and player acquisition. Based on models from successful games like Pirate Nation (guild alliances with sustainable pots) and emerging P2E trends, here's the structure I'd recommend.
+
+#### Core Principles for Sustainability and Scaling
+
+Player-First but Revenue-Smart: Avoid high entry barriers (e.g., expensive upfront NFTs) that deter casual players, as seen in many failed Web3 games. Instead, focus on low-friction microtransactions that feel rewarding, not exploitative.
+Deflationary and Incentive-Aligned: Use burns and staking to create scarcity, driving value without infinite token emissions.
+Diversified Streams: Don't rely solely on NFT sales (volatile); mix with recurring fees and premium features for stability.
+Community Governance: Incorporate DAOs for pot allocation decisions, fostering loyalty and reducing centralization risks.
+Reinvestment Loop: 50–70% of revenues back into prize pots/marketing to attract more players; scale from 50-player alphas to 10k+ seasons.
+
+#### Recommended Monetary Structure: A 4-Pillar Hybrid Model
+
+**Pillar 1: Microtransactions & Entry Fees**
+- Low-friction entry: Free basic hunts with optional upgrades (e.g., 0.01 ETH for premium stego-robustness or AI-generated clues).
+- Steal claw fees: 0.001 ETH per attempt, funding faction pots and treasury (scales with participation).
+- Dynamic pricing: Fees adjust based on oracle data (e.g., higher during peak times to manage load).
+
+**Pillar 2: NFT Bonuses & Collectibles**
+- Bonus multiplier NFTs: Mintable post-season for top performers (e.g., +2x permanent boost, royalty-sharing).
+- Champion Claw NFTs: Derivative NFTs for steal leaders, with secondary market royalties (5-10% to treasury).
+- Limited editions: Rare faction-themed NFTs unlocked via gameplay, sold at auction.
+
+**Pillar 3: $VAULT Tokenomics**
+- Utility token: Earned through gameplay (solving clues, successful steals), used for premium features or governance.
+- Deflationary mechanics: Burns on failed steals or expired hunts to increase scarcity.
+- Treasury allocation: 50% of token sales/rewards fund prize pots, 30% marketing, 20% development.
+- Custom Swap & Dynamic Tokenomics: Build proprietary AMM for $VAULT/native swaps. Collect native tokens (ETH/Base) instead of $VAULT to accelerate treasury growth, reduce selling pressure, and enable buybacks based on volume/game metrics (e.g., auto-buyback 1% of treasury on high participation days).
+
+**Pillar 4: Community & Grants**
+- Crowdfunding: Launch on platforms like Juicebox or Gitcoin for initial treasury (target $50k-$100k seed).
+- Grants: Apply to Web3 gaming grants (e.g., Polygon, Avalanche) for oracle costs and marketing.
+- Partnerships: Collaborate with stego tools or NFT projects for cross-promotion.
 
 This creates a self-regulating, fair, and engaging scavenger hunt that scales automatically while maintaining privacy and decentralization.
 - Chainlink for randomness and automation

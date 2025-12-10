@@ -1,0 +1,72 @@
+[
+  {
+    "clue_number": 1,
+    "clue_text": "Follow the trail to the next image tagged with @StegHiderHunt",
+    "image_path": "hunt_clues_50/clue_1.png",
+    "base_image": "images/test_image.png",
+    "encryption_level": "basic"
+  },
+  {
+    "clue_number": 2,
+    "clue_text": "The next secret is hidden in a photo of a key",
+    "image_path": "hunt_clues_50/clue_2.png",
+    "base_image": "images/test_image.png",
+    "encryption_level": "basic"
+  },
+  {
+    "clue_number": 3,
+    "clue_text": "Chain continues at pastebin.com/steg3",
+    "image_path": "hunt_clues_50/clue_3.png",
+    "base_image": "images/test_image.png",
+    "encryption_level": "basic"
+  },
+  {
+    "clue_number": 4,
+    "clue_text": "Search social media for #CipherClue4 to find the next piece",
+    "image_path": "hunt_clues_50/clue_4.png",
+    "base_image": "images/test_image.png",
+    "encryption_level": "basic"
+  },
+  {
+    "clue_number": 5,
+    "clue_text": "Follow the trail to the next image tagged with @StegHiderHunt",
+    "image_path": "hunt_clues_50/clue_5.png",
+    "base_image": "images/test_image.png",
+    "encryption_level": "basic"
+  },
+  {
+    "clue_number": 6,
+    "clue_text": "The 6th clue awaits in a digital vault on Nostr",
+    "image_path": "hunt_clues_50/clue_6.png",
+    "base_image": "images/test_image.png",
+    "encryption_level": "basic"
+  },
+  {
+    "clue_number": 7,
+    "clue_text": "The 7th clue awaits in a digital vault on Nostr",
+    "image_path": "hunt_clues_50/clue_7.png",
+    "base_image": "images/test_image.png",
+    "encryption_level": "basic"
+  },
+  {
+    "clue_number": 8,
+    "clue_text": "Decode this to find the next location: hidden message",
+    "image_path": "hunt_clues_50/clue_8.png",
+    "base_image": "images/test_image.png",
+    "encryption_level": "basic"
+  },
+  {
+    "clue_number": 9,
+    "clue_text": "Search social media for #CipherClue9 to find the next piece",
+    "image_path": "hunt_clues_50/clue_9.png",
+    "base_image": "images/test_image.png",
+    "encryption_level": "basic"
+  },
+  {
+    "clue_number": 10,
+    "clue_text": "Congratulations! You've completed the hunt. Claim your reward at: https://steghider.com/reward/3105",
+    "image_path": "hunt_clues_50/clue_10.png",
+    "base_image": "images/test_image.png",
+    "encryption_level": "basic"
+  }
+]

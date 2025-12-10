@@ -6,7 +6,8 @@ import base64
 import io
 import qrcode
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'core'))
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "core"))
 from steg_hider import (
     hide_message,
     extract_message,
