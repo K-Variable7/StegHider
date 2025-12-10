@@ -31,6 +31,20 @@ const nextConfig = {
       use: 'ignore-loader'
     });
 
+    // Resolve fallbacks for missing optional dependencies
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      'pino-pretty': false,
+      '@react-native-async-storage/async-storage': false,
+    };
+
+    // Ignore specific modules that cause issues
+    config.externals = config.externals || [];
+    config.externals.push({
+      'pino-pretty': 'commonjs pino-pretty',
+      '@react-native-async-storage/async-storage': 'commonjs @react-native-async-storage/async-storage',
+    });
+
     return config;
   },
 };
