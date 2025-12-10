@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  turbopack: false,
   outputFileTracingRoot: require('path').join(__dirname, '../../'),
   serverExternalPackages: ['@xmtp/xmtp-js', '@xmtp/proto'],
   webpack: (config, { isServer }) => {
