@@ -1,25 +1,14 @@
 {
   "version": 2,
-  "buildCommand": "cd vaultwars/frontend && npm run build",
-  "outputDirectory": "vaultwars/frontend/.next",
-  "installCommand": "cd vaultwars/frontend && npm install",
-  "headers": [
+  "functions": {
+    "vaultwars/frontend/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "rewrites": [
     {
       "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "Referrer-Policy",
-          "value": "strict-origin-when-cross-origin"
-        }
-      ]
+      "destination": "/vaultwars/frontend/$1"
     }
   ]
 }
