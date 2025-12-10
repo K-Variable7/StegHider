@@ -5,11 +5,5 @@
       "src": "vaultwars/frontend/package.json",
       "use": "@vercel/next"
     }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "vaultwars/frontend/$1"
-    }
   ]
 }
