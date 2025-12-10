@@ -4,4 +4,4 @@ const nextConfig = {
   serverExternalPackages: ['@xmtp/xmtp-js', '@xmtp/proto'],
 };
 
-module.exports = withPWA(nextConfig);
+module.exports = nextConfig;
