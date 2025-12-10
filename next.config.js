@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  turbopack: false,
   serverExternalPackages: ['@xmtp/xmtp-js', '@xmtp/proto'],
   webpack: (config, { isServer }) => {
     // Resolve aliases for missing dependencies
@@ -8,6 +7,8 @@ const nextConfig = {
       ...config.resolve.alias,
       'pino-elasticsearch': false,
       'tap': false,
+      '@react-native-async-storage/async-storage': false,
+      'pino-pretty': false,
     };
 
     return config;
