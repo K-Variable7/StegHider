@@ -6,3 +6,5 @@ out/
 # Ignore local env files
 /vaultwars/contracts/.env
 .env
+.env.local
+.env.*
